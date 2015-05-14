@@ -1,12 +1,18 @@
 import ast
 import numbers
 
+#import z3 to check assertions and evaluate the pct when reaching a return stmt
+from z3 import *
+
+#import os to fork an evaluation at an if/else stmt
+import os, sys
+
 
 class SymbolicEngine:
     def __init__(self, function_name, program_ast):
         self.fnc = find_function(program_ast, function_name)
         self.program_ast = program_ast
-
+    
     # TODO: implement symbolic execution
     # The return value is a list of tuples [(input#1, ret#1), ...]
     # where input is a dictionary specifying concrete value used as input, e.g. {'x': 1, 'y': 2}
@@ -14,35 +20,35 @@ class SymbolicEngine:
     # Note: all returned inputs should explore different program paths
     def explore(self):
         # Generates default input
+        #unnecessary but we need to feed the function FunctionEvaluator with imput
         input = generate_inputs(self.fnc, {})
+
         f = FunctionEvaluator(self.fnc, self.program_ast, input)
-        ret = f.eval()
-
-        input_to_ret = []
-        input_to_ret.append((input, ret))
-
-        assetion_violations_to_input = {}
-
-        return (input_to_ret, assetion_violations_to_input)
+        input_to_ret = f.eval_symbolic()
+        
+        assertion_violations_to_input = {}
+        
+        return (static_values_to_ret, assertion_violations_to_input)
 
 ###############
 # Interpreter #
 ###############
 
+#do not change
 def run_expr(expr, fnc):
     if type(expr) == ast.Tuple:
         r = []
         for el in expr.elts:
             r.append(run_expr(el, fnc))
         return tuple(r)
-
+    
     if type(expr) == ast.Name:
         if expr.id == 'True':
             return 1
         elif expr.id == 'False':
             return 0
         return fnc.state[expr.id]
-
+    
     if type(expr) == ast.Num:
         assert (isinstance(expr.n, numbers.Integral))
         return expr.n
@@ -60,7 +66,7 @@ def run_expr(expr, fnc):
             return run_expr(expr.left, fnc) % run_expr(expr.right, fnc)
         if type(expr.op) == ast.Pow:
             return run_expr(expr.left, fnc) ** run_expr(expr.right, fnc)
-
+        
         # Evaluate only with constants
         if type(expr.op) == ast.LShift and type(expr.left) == ast.Num and type(expr.right) == ast.Num:
             return run_expr(expr.left, fnc) << run_expr(expr.right, fnc)
@@ -70,8 +76,8 @@ def run_expr(expr, fnc):
     if type(expr) == ast.UnaryOp:
         if type(expr.op) == ast.Not:
             return not run_expr(expr.operand, fnc)
-        if type(expr.op) == ast.USub:
-            return -run_expr(expr.operand, fnc)
+            if type(expr.op) == ast.USub:
+                return -run_expr(expr.operand, fnc)
 
     if type(expr) == ast.Compare:
         assert (len(expr.ops) == 1)  # Do not allow for x==y==0 syntax
@@ -106,25 +112,26 @@ def run_expr(expr, fnc):
 
     if type(expr) == ast.Call:
         f = find_function(fnc.ast_root, expr.func.id)
-
+            
         inputs = {}
         assert (len(expr.args) == len(f.args.args))
         # Evaluates all function arguments
         for i in range(0, len(expr.args)):
             inputs[f.args.args[i].id] = run_expr(expr.args[i], fnc)
-
+            
         fnc_eval = FunctionEvaluator(f, fnc.ast_root, inputs)
         return fnc_eval.eval()
-
+        
     raise Exception('Unhandled expression: ' + ast.dump(expr))
 
 
+#do not change
 def run_stmt(stmt, fnc):
     if type(stmt) == ast.Return:
         fnc.returned = True
         fnc.return_val = run_expr(stmt.value, fnc)
         return
-
+    
     if type(stmt) == ast.If:
         cond = run_expr(stmt.test, fnc)
         if cond:
@@ -132,7 +139,7 @@ def run_stmt(stmt, fnc):
         else:
             run_body(stmt.orelse, fnc)
         return
-
+    
     if type(stmt) == ast.Assign:
         assert (len(stmt.targets) == 1)  # Disallow a=b=c syntax
         lhs = stmt.targets[0]
@@ -148,20 +155,92 @@ def run_stmt(stmt, fnc):
         if type(lhs) == ast.Name:
             fnc.state[lhs.id] = rhs
             return
-        
+
     if type(stmt) == ast.Assert:
-        # TODO: implement check whether the assertion holds. 
+        #nothing to do here, only assert when in symbolic
+        return
+        
+        raise Exception('Unhandled statement: ' + ast.dump(stmt))
+
+#new
+def eval_stmt(stmt, fnc):
+    if type(stmt) == ast.Return:
+        fnc.returned = True
+        fnc.return_val = run_expr(stmt.value, fnc)
+
+        if (fnc.pct.check() == sat):
+            print ("Found a satisfiable stmt")
+            sat_model = fnc.pct.model()
+            sat_dict = model_to_dictionary(sat_model)
+            fnc.values_to_ret.append((sat_dict, fnc.return_val))
+            static_values_to_ret.append((sat_dict, fnc.return_val))
+        return
+    
+    if type(stmt) == ast.If:
+        cond = run_expr(stmt.test, fnc)
+
+        #fork to evaluate both if and else bodies
+        pid = os.fork()
+        if (pid == 0):
+            #child
+            print ("A child was born")
+            fnc.parent = False
+
+            #TODO: add the stmt.test to the fnc.pct in the right FORMAT
+            #fnc.pct.add(stmt.test)
+            eval_body(stmt.body, fnc)
+
+        else:
+            #parent
+            print("I became a parent")
+            
+            #TODO: add the negation of stmt.test to the fnc.pct in the right FORMAT
+            #fnc.pct.add(Not(stmt.test))
+            eval_body(stmt.orelse, fnc)
+            #TODO: wait for child
+            os.waitpid(pid,0)
+        return
+    
+    if type(stmt) == ast.Assign:
+        assert (len(stmt.targets) == 1)  # Disallow a=b=c syntax
+        lhs = stmt.targets[0]
+        rhs = run_expr(stmt.value, fnc)
+        if type(lhs) == ast.Tuple:
+            assert (type(rhs) == tuple)
+            assert (len(rhs) == len(lhs.elts))
+            for el_index in range(len(lhs.elts)):
+                el = lhs.elts[el_index]
+                assert (type(el) == ast.Name)
+                fnc.state[el.id] = rhs[el_index]
+            return
+        if type(lhs) == ast.Name:
+            fnc.state[lhs.id] = rhs
+            return
+
+    if type(stmt) == ast.Assert:
+        # TODO: implement check whether the assertion holds.
         # However do not throw exception in case the assertion does not hold.
         # Instead return inputs that trigger the violation from SymbolicEngine.explore()
         return
+        
+        raise Exception('Unhandled statement: ' + ast.dump(stmt))
 
-    raise Exception('Unhandled statement: ' + ast.dump(stmt))
 
-
+#do not change
 def run_body(body, fnc):
     for stmt in body:
         run_stmt(stmt, fnc)
         if fnc.returned:
+            return
+
+#new
+def eval_body(body, fnc):
+    for stmt in body:
+        eval_stmt(stmt, fnc)
+        if fnc.returned:
+            #kill process if it's a child
+            if fnc.parent == False:
+                sys.exit()
             return
 
 
@@ -170,19 +249,35 @@ class FunctionEvaluator:
         assert (type(f) == ast.FunctionDef)
         for arg in f.args.args:
             assert arg.id in inputs
-
+        
         self.state = inputs.copy()
         self.returned = False
         self.return_val = None
         self.ast_root = ast_root
         self.f = f
 
+
+        #new
+        self.pct = Solver()
+        self.values_to_ret = []
+
+        #only the parent of all processes is allowed to return
+        self.parent = True
+    
     def eval(self):
         run_body(self.f.body, self)
-
+        
         assert (self.returned)
         return self.return_val
 
+    def eval_symbolic(self):
+        eval_body(self.f.body, self)
+        
+        assert (self.returned)
+        return self.values_to_ret
+
+#TODO: make it thread-safe
+static_values_to_ret = []
 
 ####################
 # Helper Functions #
@@ -190,16 +285,15 @@ class FunctionEvaluator:
 
 # f: function for which to generate inputs
 # inputs: dictionary that maps argument names to values. e.g. {'x': 42 }
-def generate_inputs(f, custom_inputs):
+def generate_inputs(f, inputs):
     inputs = {}
     for arg in f.args.args:
         assert (type(arg) == ast.Name)
-        if arg.id in custom_inputs:
-            inputs[arg.id] = custom_inputs[arg.id]
+        if arg.id in inputs:
+            inputs[arg.id] = inputs[arg.id]
         else:
             # By default input are set to zero
             inputs[arg.id] = 0
-
     return inputs
 
 
@@ -209,3 +303,9 @@ def find_function(p, function_name):
         if type(x) == ast.FunctionDef and x.name == function_name:
             return x
     raise LookupError('Function %s not found' % function_name)
+
+#new
+def model_to_dictionary(model):
+    return {k:v for k,v in (x.split('=') for x in model) }
+
+

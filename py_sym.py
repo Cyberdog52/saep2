@@ -4,7 +4,7 @@ import ast
 import sys
 import platform
 
-from symbolic import SymbolicEngine, find_function, FunctionEvaluator, generate_inputs
+from symbolic import SymbolicEngine, find_function, run_expr, FunctionEvaluator, generate_inputs
 
 import types
 import logging
@@ -50,7 +50,7 @@ def eval_app(program):
         assert (type(oracle.body[0].value) == ast.List)
         expected = set()
         for expr in oracle.body[0].value.elts:
-            expected.add(expr.n)
+            expected.add(run_expr(expr, None))
 
         return_values = set([ret for input,ret in input_to_ret])
         if expected == return_values:
