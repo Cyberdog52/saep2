@@ -76,8 +76,8 @@ def run_expr(expr, fnc):
     if type(expr) == ast.UnaryOp:
         if type(expr.op) == ast.Not:
             return not run_expr(expr.operand, fnc)
-            if type(expr.op) == ast.USub:
-                return -run_expr(expr.operand, fnc)
+        if type(expr.op) == ast.USub:
+            return -run_expr(expr.operand, fnc)
 
     if type(expr) == ast.Compare:
         assert (len(expr.ops) == 1)  # Do not allow for x==y==0 syntax
@@ -160,7 +160,7 @@ def run_stmt(stmt, fnc):
         #nothing to do here, only assert when in symbolic
         return
         
-        raise Exception('Unhandled statement: ' + ast.dump(stmt))
+    raise Exception('Unhandled statement: ' + ast.dump(stmt))
 
 #new
 def eval_stmt(stmt, fnc):
