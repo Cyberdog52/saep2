@@ -7,6 +7,8 @@ from z3 import *
 #import os to fork an evaluation at an if/else stmt
 import os, sys
 
+r, w = os.pipe() 
+
 
 class SymbolicEngine:
     def __init__(self, function_name, program_ast):
@@ -26,14 +28,19 @@ class SymbolicEngine:
 
         f = FunctionEvaluator(self.fnc, self.program_ast, input)
         input_to_ret = f.eval_symbolic()
-        
+
+        print input_to_ret #debug
         assertion_violations_to_input = {}
         
-        return (static_values_to_ret, assertion_violations_to_input)
+        #somehow raises an exception, even though the format should be good (see print above)
+        #TODO: fix this
+        return (input_to_ret, assertion_violations_to_input)
 
 ###############
 # Interpreter #
 ###############
+
+#TODO: create eval_expr that basically turns everything into strings
 
 #do not change
 def run_expr(expr, fnc):
@@ -167,6 +174,7 @@ def run_stmt(stmt, fnc):
 def eval_stmt(stmt, fnc):
     if type(stmt) == ast.Return:
         fnc.returned = True
+        #should actually be eval_expr
         fnc.return_val = run_expr(stmt.value, fnc)
 
         #add the symbolic values in symbolic_dict to the pct
@@ -186,20 +194,36 @@ def eval_stmt(stmt, fnc):
                 fnc.pct.add(dummy_variable == temp)
                 print fnc.pct
 
-
+        global w
         if (fnc.pct.check() == sat):
             print ("Found a satisfiable stmt")
             sat_model = fnc.pct.model()
             print sat_model
             sat_dict = model_to_dictionary(sat_model)
-            fnc.values_to_ret.append((sat_dict, fnc.return_val)) #does not work, its local
 
-            #TODO: acquire lock
-            static_values_to_ret.append((sat_dict, fnc.return_val))
-            #TODO: release lock
+            if (fnc.parent == True):
+                fnc.values_to_ret.append((sat_dict, fnc.return_val)) 
+            else:
+
+                #TODO: fix pipe if we have 3 threads with one thread as parent and child
+                w = os.fdopen(w, 'w')
+                print "Child writing"
+                #maybe use another symbol to split  the two values in the char-stream?
+                w.write(str(sat_dict) + "&" + str(fnc.return_val))
+                w.close()
+                print "Child closing"
+        else:
+            if (fnc.parent == False):
+                w = os.fdopen(w, 'w')
+                print "Child writing"
+                #tell the parent that you didnt find anything, tell the parent that you were useless
+                w.write("Sorry Mum, I found nothing")
+                w.close()
+                print "Child closing"
         return
     
     if type(stmt) == ast.If:
+        #will be eval_expr
         cond = run_expr(stmt.test, fnc)
 
         #fork to evaluate both if and else bodies
@@ -207,6 +231,7 @@ def eval_stmt(stmt, fnc):
         if (pid == 0):
             #child
             print ("A child was born")
+            os.close(r)
             fnc.parent = False
 
             #TODO: add the stmt.test to the fnc.pct in the right FORMAT
@@ -216,12 +241,26 @@ def eval_stmt(stmt, fnc):
         else:
             #parent
             print("I became a parent")
-            
+            os.close(w)
+
             #TODO: add the negation of stmt.test to the fnc.pct in the right FORMAT
             #fnc.pct.add(Not(stmt.test))
+
             eval_body(stmt.orelse, fnc)
-            #TODO: wait for child
+            
+            #read what the child has to say and add it to values_to_ret
+            read_pipe = os.fdopen(r)
+            print ("Parent reading")
+            pipe_string = read_pipe.read()
+            if (pipe_string != "Sorry Mum, I found nothing"):
+                k,v = pipe_string.split("&")
+                new_dict = eval(k)
+                new_val = Int(v)
+                print (new_dict, new_val)
+                fnc.values_to_ret.append((new_dict,new_val))
+            #wait for the child to kill itself
             os.waitpid(pid,0)
+            #go on like you'd never have been a parent, but you're wiser now
         return
     
     # lots TODO here
@@ -265,8 +304,12 @@ def eval_body(body, fnc):
         if fnc.returned:
             #kill process if it's a child
             if fnc.parent == False:
-                sys.exit()
+                sys.exit(0)
+
             #TODO: delete the dummy_variables from the output 
+            #TODO: or delete dummy_variables entirely and check if an input variable is not in the output.. 
+            # .. and add it with a chosen number to the dicitonary
+
             #else :
                 
             return
@@ -312,8 +355,6 @@ class FunctionEvaluator:
         assert (self.returned)
         return self.values_to_ret
 
-#TODO: make it thread-safe
-static_values_to_ret = []
 
 ####################
 # Helper Functions #
@@ -321,6 +362,7 @@ static_values_to_ret = []
 
 # f: function for which to generate inputs
 # inputs: dictionary that maps argument names to values. e.g. {'x': 42 }
+#do not change
 def generate_inputs(f, inputs):
     inputs = {}
     for arg in f.args.args:
@@ -332,7 +374,7 @@ def generate_inputs(f, inputs):
             inputs[arg.id] = 0
     return inputs
 
-
+#do not change
 def find_function(p, function_name):
     assert (type(p) == ast.Module)
     for x in p.body:
@@ -340,12 +382,12 @@ def find_function(p, function_name):
             return x
     raise LookupError('Function %s not found' % function_name)
 
-#new
+#new, works
 def model_to_dictionary(model):
     stmts = str(model).split(",")
+    new_list = []
     for stmt in stmts:
-        #TODO: fix this, right now it doesn't delete the characters
-        stmt = "".join([char for char in stmt if (char not in [' ', '[', ']'])])
-    return {k:v for k,v in (x.split('=') for x in stmts) }
+        new_list.append("".join([char for char in stmt if (char not in [' ', '[', ']'])]))
+    return {k:(Int(v)) for k,v in (x.split('=') for x in new_list) }
 
 
