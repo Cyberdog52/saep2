@@ -21,6 +21,7 @@ class SymbolicEngine:
     def explore(self):
         # Generates default input
         #unnecessary but we need to feed the function FunctionEvaluator with imput
+
         input = generate_inputs(self.fnc, {})
 
         f = FunctionEvaluator(self.fnc, self.program_ast, input)
@@ -76,8 +77,8 @@ def run_expr(expr, fnc):
     if type(expr) == ast.UnaryOp:
         if type(expr.op) == ast.Not:
             return not run_expr(expr.operand, fnc)
-        if type(expr.op) == ast.USub:
-            return -run_expr(expr.operand, fnc)
+            if type(expr.op) == ast.USub:
+                return -run_expr(expr.operand, fnc)
 
     if type(expr) == ast.Compare:
         assert (len(expr.ops) == 1)  # Do not allow for x==y==0 syntax
@@ -160,7 +161,7 @@ def run_stmt(stmt, fnc):
         #nothing to do here, only assert when in symbolic
         return
         
-    raise Exception('Unhandled statement: ' + ast.dump(stmt))
+        raise Exception('Unhandled statement: ' + ast.dump(stmt))
 
 #new
 def eval_stmt(stmt, fnc):
@@ -168,12 +169,34 @@ def eval_stmt(stmt, fnc):
         fnc.returned = True
         fnc.return_val = run_expr(stmt.value, fnc)
 
+        #add the symbolic values in symbolic_dict to the pct
+        for key in fnc.symbolic_dict:
+            print key + " == " + fnc.symbolic_dict[key]
+            #see if it's not trivial
+            if key != fnc.symbolic_dict[key]:
+                print "Its not trivial" #debug
+               # fnc.pct.add(key + " == " + fnc.symbolic_dict[key])
+            else:
+                print "Its trivial" #debug
+                #if it can be anything, set it to 0
+                #TODO: make sure, dummy_variable is not used in the input program
+                temp = Int(str(key))
+                dummy_variable = Int('dummy_variable' + str(key))
+                fnc.pct.add(temp == dummy_variable)
+                fnc.pct.add(dummy_variable == temp)
+                print fnc.pct
+
+
         if (fnc.pct.check() == sat):
             print ("Found a satisfiable stmt")
             sat_model = fnc.pct.model()
+            print sat_model
             sat_dict = model_to_dictionary(sat_model)
-            fnc.values_to_ret.append((sat_dict, fnc.return_val))
+            fnc.values_to_ret.append((sat_dict, fnc.return_val)) #does not work, its local
+
+            #TODO: acquire lock
             static_values_to_ret.append((sat_dict, fnc.return_val))
+            #TODO: release lock
         return
     
     if type(stmt) == ast.If:
@@ -201,9 +224,11 @@ def eval_stmt(stmt, fnc):
             os.waitpid(pid,0)
         return
     
+    # lots TODO here
     if type(stmt) == ast.Assign:
         assert (len(stmt.targets) == 1)  # Disallow a=b=c syntax
         lhs = stmt.targets[0]
+        #print stmt.targets[0] #debug
         rhs = run_expr(stmt.value, fnc)
         if type(lhs) == ast.Tuple:
             assert (type(rhs) == tuple)
@@ -223,7 +248,7 @@ def eval_stmt(stmt, fnc):
         # Instead return inputs that trigger the violation from SymbolicEngine.explore()
         return
         
-        raise Exception('Unhandled statement: ' + ast.dump(stmt))
+    raise Exception('Unhandled statement: ' + ast.dump(stmt))
 
 
 #do not change
@@ -241,6 +266,9 @@ def eval_body(body, fnc):
             #kill process if it's a child
             if fnc.parent == False:
                 sys.exit()
+            #TODO: delete the dummy_variables from the output 
+            #else :
+                
             return
 
 
@@ -256,10 +284,18 @@ class FunctionEvaluator:
         self.ast_root = ast_root
         self.f = f
 
-
         #new
         self.pct = Solver()
         self.values_to_ret = []
+
+        #make symbolic dictonary that has as key 'x' and as value '3' or '5/5 + y'
+        self.symbolic_dict = {}
+
+        for i in range(0, len(f.args.args)):
+            self.symbolic_dict[f.args.args[i].id] = str(f.args.args[i].id)
+
+        print "Symbolic dictionary:", 
+        print self.symbolic_dict #debug
 
         #only the parent of all processes is allowed to return
         self.parent = True
@@ -306,6 +342,10 @@ def find_function(p, function_name):
 
 #new
 def model_to_dictionary(model):
-    return {k:v for k,v in (x.split('=') for x in model) }
+    stmts = str(model).split(",")
+    for stmt in stmts:
+        #TODO: fix this, right now it doesn't delete the characters
+        stmt = "".join([char for char in stmt if (char not in [' ', '[', ']'])])
+    return {k:v for k,v in (x.split('=') for x in stmts) }
 
 

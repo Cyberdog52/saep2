@@ -4,13 +4,17 @@ from z3 import *
 
 x = Int('x')
 y = Int('y')
+dummy_variable = Int('d')
 s = Solver()
-s.add(x > 0)
-s.add(x < 2)
-s.add(y == x + 1)
+#s.add(x > 0)
+s.add(x > 2)
+print s
+
+#s.add(y == x + 1)
 
 print(s.check())
-print(s.model())
+if (s.check() == sat):
+    print(s.model())
 
 # Extracts variables used from a Z3 expression
 # Taken from http://z3.codeplex.com/SourceControl/changeset/view/fbce8160252d#src/api/python/z3util.py
