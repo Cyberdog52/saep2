@@ -40,7 +40,103 @@ class SymbolicEngine:
 # Interpreter #
 ###############
 
-#TODO: create eval_expr that basically turns everything into strings
+
+#new
+# turn everything into a string, such that the expression is not run
+def eval_expr(expr, fnc):
+    if type(expr) == ast.Tuple:
+        r = []
+        for el in expr.elts:
+            r.append(eval_expr(el, fnc))
+        return tuple(r)
+    
+    if type(expr) == ast.Name:
+        if expr.id == 'True':
+            return 1
+        elif expr.id == 'False':
+            return 0
+        #does this work? if so, it would be brilliant
+        return str(fnc.symbolic_dict[expr.id])
+    
+    if type(expr) == ast.Num:
+        assert (isinstance(expr.n, numbers.Integral))
+        return str(expr.n)
+
+    #do we need brackets for the binding? somehow, the run_expr doesn't have brackets it either
+    if type(expr) == ast.BinOp:
+        if type(expr.op) == ast.Add:
+            return eval_expr(expr.left, fnc) + '+' + eval_expr(expr.right, fnc)
+        if type(expr.op) == ast.Sub:
+            return eval_expr(expr.left, fnc) + '-' + eval_expr(expr.right, fnc)
+        if type(expr.op) == ast.Mult:
+            return eval_expr(expr.left, fnc) + '*' + eval_expr(expr.right, fnc)
+        if type(expr.op) == ast.Div:
+            return eval_expr(expr.left, fnc) + '/' + eval_expr(expr.right, fnc)
+        if type(expr.op) == ast.Mod:
+            return eval_expr(expr.left, fnc) + '%' + eval_expr(expr.right, fnc)
+        if type(expr.op) == ast.Pow:
+            return eval_expr(expr.left, fnc) + '**' + eval_expr(expr.right, fnc)
+        
+        # Evaluate only with constants
+        if type(expr.op) == ast.LShift and type(expr.left) == ast.Num and type(expr.right) == ast.Num:
+            return eval_expr(expr.left, fnc) + ' << ' + eval_expr(expr.right, fnc)
+        if type(expr.op) == ast.RShift and type(expr.left) == ast.Num and type(expr.right) == ast.Num:
+            return eval_expr(expr.left, fnc) + ' >> ' +  eval_expr(expr.right, fnc)
+
+    if type(expr) == ast.UnaryOp:
+        if type(expr.op) == ast.Not:
+            return ' not ' + eval_expr(expr.operand, fnc)
+            if type(expr.op) == ast.USub:
+                return ' - ' + eval_expr(expr.operand, fnc)
+
+    if type(expr) == ast.Compare:
+        assert (len(expr.ops) == 1)  # Do not allow for x==y==0 syntax
+        assert (len(expr.comparators) == 1)
+        e1 = eval_expr(expr.left, fnc)
+        op = expr.ops[0]
+        e2 = eval_expr(expr.comparators[0], fnc)
+        if type(op) == ast.Eq:
+            return e1 + ' == ' + e2
+        if type(op) == ast.NotEq:
+            return e1 + ' != ' + e2
+        if type(op) == ast.Gt:
+            return e1 + ' > ' + e2
+        if type(op) == ast.GtE:
+            return e1 + ' >= ' + e2
+        if type(op) == ast.Lt:
+            return e1 + ' < ' + e2
+        if type(op) == ast.LtE:
+            return e1 + ' <= ' + e2
+
+    if type(expr) == ast.BoolOp:
+        if type(expr.op) == ast.And:
+            r = 'True'
+            for v in expr.values:
+                r = r + ' and ' + eval_expr(v, fnc)
+            return r
+        if type(expr.op) == ast.Or:
+            r = 'False'
+            for v in expr.values:
+                r = r + ' or ' + eval_expr(v, fnc)
+            return r
+
+    #TODO:
+    # check if the symbols used in the function call might interfere with this function
+    # handle all the complifications of a function call
+    if type(expr) == ast.Call:
+        f = find_function(fnc.ast_root, expr.func.id)
+            
+        inputs = {}
+        assert (len(expr.args) == len(f.args.args))
+        # Evaluates all function arguments
+        for i in range(0, len(expr.args)):
+            inputs[f.args.args[i].id] = run_expr(expr.args[i], fnc)
+            
+        fnc_eval = FunctionEvaluator(f, fnc.ast_root, inputs)
+        #do this symbolically
+        return fnc_eval.eval_symbolic()
+        
+    raise Exception('Unhandled expression: ' + ast.dump(expr))
 
 #do not change
 def run_expr(expr, fnc):
@@ -179,20 +275,20 @@ def eval_stmt(stmt, fnc):
 
         #add the symbolic values in symbolic_dict to the pct
         for key in fnc.symbolic_dict:
-            print key + " == " + fnc.symbolic_dict[key]
+            # print key + " == " + fnc.symbolic_dict[key] #debug
             #see if it's not trivial
             if key != fnc.symbolic_dict[key]:
-                print "Its not trivial" #debug
-               # fnc.pct.add(key + " == " + fnc.symbolic_dict[key])
+                #print "Its not trivial" #debug
+                fnc.pct.add(key + " == " + fnc.symbolic_dict[key])
             else:
-                print "Its trivial" #debug
+                #print "Its trivial" #debug
                 #if it can be anything, set it to 0
                 #TODO: make sure, dummy_variable is not used in the input program
                 temp = Int(str(key))
                 dummy_variable = Int('dummy_variable' + str(key))
                 fnc.pct.add(temp == dummy_variable)
                 fnc.pct.add(dummy_variable == temp)
-                print fnc.pct
+                #print fnc.pct #debug
 
         global w
         if (fnc.pct.check() == sat):
@@ -225,6 +321,8 @@ def eval_stmt(stmt, fnc):
     if type(stmt) == ast.If:
         #will be eval_expr
         cond = run_expr(stmt.test, fnc)
+        print (cond)
+        eval_str = eval_expr(stmt.test, fnc)
 
         #fork to evaluate both if and else bodies
         pid = os.fork()
@@ -236,6 +334,7 @@ def eval_stmt(stmt, fnc):
 
             #TODO: add the stmt.test to the fnc.pct in the right FORMAT
             #fnc.pct.add(stmt.test)
+            
             eval_body(stmt.body, fnc)
 
         else:
@@ -343,6 +442,7 @@ class FunctionEvaluator:
         #only the parent of all processes is allowed to return
         self.parent = True
     
+    #do not change
     def eval(self):
         run_body(self.f.body, self)
         

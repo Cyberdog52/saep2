@@ -3,7 +3,7 @@ def main(x, y):
 	if (x < 3):
 		return 0
 	else:
-		return -1
+		return 1
 
 # def twice(v): 
 # 	return v + v
