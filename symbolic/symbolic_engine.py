@@ -83,11 +83,12 @@ def eval_expr(expr, fnc):
         if type(expr.op) == ast.RShift and type(expr.left) == ast.Num and type(expr.right) == ast.Num:
             return '('+ eval_expr(expr.left, fnc) + ')>>(' +  eval_expr(expr.right, fnc) + ')'
 
+
     if type(expr) == ast.UnaryOp:
         if type(expr.op) == ast.Not:
             return 'not(' + eval_expr(expr.operand, fnc) + ')'
             if type(expr.op) == ast.USub:
-                return '-' + eval_expr(expr.operand, fnc) + ')'
+                return '(0)-(' + eval_expr(expr.operand, fnc) + ')'
 
     if type(expr) == ast.Compare:
         assert (len(expr.ops) == 1)  # Do not allow for x==y==0 syntax
@@ -112,17 +113,18 @@ def eval_expr(expr, fnc):
         if type(expr.op) == ast.And:
             r = 'True'
             for v in expr.values:
-                r = r + 'and(' + eval_expr(v, fnc) + ')'
+                r = '(' +r + ')and(' + eval_expr(v, fnc) + ')'
             return r
         if type(expr.op) == ast.Or:
             r = 'False'
             for v in expr.values:
-                r = r + 'or(' + eval_expr(v, fnc) + ')'
+                r = '(' + r + ')or(' + eval_expr(v, fnc) + ')'
             return r
 
     #TODO:
     # check if the symbols used in the function call might interfere with this function
     # handle all the complifications of a function call
+    # lots to do here!
     if type(expr) == ast.Call:
         f = find_function(fnc.ast_root, expr.func.id)
             
@@ -410,11 +412,16 @@ def eval_stmt(stmt, fnc):
         
     raise Exception('Unhandled statement: ' + ast.dump(stmt))
 
+#translates a string like     ((((x)+(y))==(0))and(((x)*(2))==(10)))or((a)or(not((b)==(False))))
+#to   Or(And(x+y==0,x*2==10),Or(a,Not(b == False)))
+#make sure, that variables like x are stored as Int('x')
+#it might even not be a problem to store b also as an Int, because Bool is a subclass of Int
+#attention to the only unary operation not!
 #TODO: fill this in
 def evaluation_to_pct (input_string, fnc):
     fnc.pct.add(True)
+    # look at the brackets somehow
     return
-
 
 
 #do not change
@@ -438,7 +445,8 @@ def eval_body(body, fnc):
             # .. and add it with a chosen number to the dicitonary
 
             else :
-                cleanup_dictionary_to_only_inputs(fnc.symbolic_dict, )
+                #maybe change the fnc.args.args?
+                cleanup_dictionary_to_only_inputs(fnc.symbolic_dict, fnc.f.args.args)
                 
             return
 
