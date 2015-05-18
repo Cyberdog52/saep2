@@ -32,8 +32,8 @@ class SymbolicEngine:
         print input_to_ret #debug
         assertion_violations_to_input = {}
         
-        #somehow raises an exception, even though the format should be good (see print above)
-        #TODO: fix this
+        #right now, input_to_ret has dictionaries where there value is in string format
+        #that's why this throws an exception, because it expects an int
         return (input_to_ret, assertion_violations_to_input)
 
 ###############
@@ -43,6 +43,7 @@ class SymbolicEngine:
 
 #new
 # turn everything into a string, such that the expression is not run
+#TODO: create a def that translates the string into z3 statements
 def eval_expr(expr, fnc):
     if type(expr) == ast.Tuple:
         r = []
@@ -62,32 +63,32 @@ def eval_expr(expr, fnc):
         assert (isinstance(expr.n, numbers.Integral))
         return str(expr.n)
 
-    #do we need brackets for the binding? somehow, the run_expr doesn't have brackets it either
+    #additionaly, we need brackets
     if type(expr) == ast.BinOp:
         if type(expr.op) == ast.Add:
-            return eval_expr(expr.left, fnc) + '+' + eval_expr(expr.right, fnc)
+            return '('+ eval_expr(expr.left, fnc) + ')+(' + eval_expr(expr.right, fnc) + ')'
         if type(expr.op) == ast.Sub:
-            return eval_expr(expr.left, fnc) + '-' + eval_expr(expr.right, fnc)
+            return '('+ eval_expr(expr.left, fnc) + ')-(' + eval_expr(expr.right, fnc) + ')'
         if type(expr.op) == ast.Mult:
-            return eval_expr(expr.left, fnc) + '*' + eval_expr(expr.right, fnc)
+            return '('+ eval_expr(expr.left, fnc) + ')*(' + eval_expr(expr.right, fnc) + ')'
         if type(expr.op) == ast.Div:
-            return eval_expr(expr.left, fnc) + '/' + eval_expr(expr.right, fnc)
+            return '('+ eval_expr(expr.left, fnc) + ')/(' + eval_expr(expr.right, fnc) + ')'
         if type(expr.op) == ast.Mod:
-            return eval_expr(expr.left, fnc) + '%' + eval_expr(expr.right, fnc)
+            return '('+ eval_expr(expr.left, fnc) + ')%(' + eval_expr(expr.right, fnc) + ')'
         if type(expr.op) == ast.Pow:
-            return eval_expr(expr.left, fnc) + '**' + eval_expr(expr.right, fnc)
+            return '('+ eval_expr(expr.left, fnc) + ')**(' + eval_expr(expr.right, fnc) + ')'
         
         # Evaluate only with constants
         if type(expr.op) == ast.LShift and type(expr.left) == ast.Num and type(expr.right) == ast.Num:
-            return eval_expr(expr.left, fnc) + ' << ' + eval_expr(expr.right, fnc)
+            return '('+ eval_expr(expr.left, fnc) + ')<<(' + eval_expr(expr.right, fnc) + ')'
         if type(expr.op) == ast.RShift and type(expr.left) == ast.Num and type(expr.right) == ast.Num:
-            return eval_expr(expr.left, fnc) + ' >> ' +  eval_expr(expr.right, fnc)
+            return '('+ eval_expr(expr.left, fnc) + ')>>(' +  eval_expr(expr.right, fnc) + ')'
 
     if type(expr) == ast.UnaryOp:
         if type(expr.op) == ast.Not:
-            return ' not ' + eval_expr(expr.operand, fnc)
+            return 'not(' + eval_expr(expr.operand, fnc) + ')'
             if type(expr.op) == ast.USub:
-                return ' - ' + eval_expr(expr.operand, fnc)
+                return '-' + eval_expr(expr.operand, fnc) + ')'
 
     if type(expr) == ast.Compare:
         assert (len(expr.ops) == 1)  # Do not allow for x==y==0 syntax
@@ -96,28 +97,28 @@ def eval_expr(expr, fnc):
         op = expr.ops[0]
         e2 = eval_expr(expr.comparators[0], fnc)
         if type(op) == ast.Eq:
-            return e1 + ' == ' + e2
+            return '('+ e1 + ')==(' + e2 + ')'
         if type(op) == ast.NotEq:
-            return e1 + ' != ' + e2
+            return '('+ e1 + ')!=(' + e2 + ')'
         if type(op) == ast.Gt:
-            return e1 + ' > ' + e2
+            return '('+ e1 + ')>(' + e2 + ')'
         if type(op) == ast.GtE:
-            return e1 + ' >= ' + e2
+            return '('+ e1 + ')>=(' + e2 + ')'
         if type(op) == ast.Lt:
-            return e1 + ' < ' + e2
+            return '('+ e1 + ')<(' + e2 + ')'
         if type(op) == ast.LtE:
-            return e1 + ' <= ' + e2
+            return '('+ e1 + ')<=(' + e2 + ')'
 
     if type(expr) == ast.BoolOp:
         if type(expr.op) == ast.And:
             r = 'True'
             for v in expr.values:
-                r = r + ' and ' + eval_expr(v, fnc)
+                r = r + 'and(' + eval_expr(v, fnc) + ')'
             return r
         if type(expr.op) == ast.Or:
             r = 'False'
             for v in expr.values:
-                r = r + ' or ' + eval_expr(v, fnc)
+                r = r + 'or(' + eval_expr(v, fnc) + ')'
             return r
 
     #TODO:
@@ -362,22 +363,22 @@ def eval_stmt(stmt, fnc):
             #go on like you'd never have been a parent, but you're wiser now
         return
     
-    # lots TODO here
+    #not sure if this works, have not tested it yet
     if type(stmt) == ast.Assign:
         assert (len(stmt.targets) == 1)  # Disallow a=b=c syntax
         lhs = stmt.targets[0]
         #print stmt.targets[0] #debug
-        rhs = run_expr(stmt.value, fnc)
+        rhs = eval_expr(stmt.value, fnc)
         if type(lhs) == ast.Tuple:
             assert (type(rhs) == tuple)
             assert (len(rhs) == len(lhs.elts))
             for el_index in range(len(lhs.elts)):
                 el = lhs.elts[el_index]
                 assert (type(el) == ast.Name)
-                fnc.state[el.id] = rhs[el_index]
+                fnc.symbolic_dict[el.id] = rhs[el_index]
             return
         if type(lhs) == ast.Name:
-            fnc.state[lhs.id] = rhs
+            fnc.symbolic_dict[lhs.id] = rhs
             return
 
     if type(stmt) == ast.Assert:
@@ -430,7 +431,7 @@ class FunctionEvaluator:
         self.pct = Solver()
         self.values_to_ret = []
 
-        #make symbolic dictonary that has as key 'x' and as value '3' or '5/5 + y'
+        #make symbolic dictonary that has as key 'x' and as value '3' or '5/5 + y' (strings!)
         self.symbolic_dict = {}
 
         for i in range(0, len(f.args.args)):
