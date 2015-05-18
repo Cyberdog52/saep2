@@ -43,7 +43,6 @@ class SymbolicEngine:
 
 #new
 # turn everything into a string, such that the expression is not run
-#TODO: create a def that translates the string into z3 statements
 def eval_expr(expr, fnc):
     if type(expr) == ast.Tuple:
         r = []
@@ -135,6 +134,7 @@ def eval_expr(expr, fnc):
             
         fnc_eval = FunctionEvaluator(f, fnc.ast_root, inputs)
         #do this symbolically
+        #TODO: lots to do here
         return fnc_eval.eval_symbolic()
         
     raise Exception('Unhandled expression: ' + ast.dump(expr))
@@ -272,7 +272,7 @@ def eval_stmt(stmt, fnc):
     if type(stmt) == ast.Return:
         fnc.returned = True
         #should actually be eval_expr
-        fnc.return_val = run_expr(stmt.value, fnc)
+        fnc.return_val = eval_expr(stmt.value, fnc)
 
         #add the symbolic values in symbolic_dict to the pct
         for key in fnc.symbolic_dict:
@@ -293,9 +293,9 @@ def eval_stmt(stmt, fnc):
 
         global w
         if (fnc.pct.check() == sat):
-            print ("Found a satisfiable stmt")
+            print ("Found a satisfiable stmt") #debug
             sat_model = fnc.pct.model()
-            print sat_model
+            print sat_model #debug
             sat_dict = model_to_dictionary(sat_model)
 
             if (fnc.parent == True):
@@ -321,7 +321,7 @@ def eval_stmt(stmt, fnc):
     
     if type(stmt) == ast.If:
         #will be eval_expr
-        cond = run_expr(stmt.test, fnc)
+        cond = eval_expr(stmt.test, fnc)
         print (cond)
         eval_str = eval_expr(stmt.test, fnc)
 
@@ -333,8 +333,8 @@ def eval_stmt(stmt, fnc):
             os.close(r)
             fnc.parent = False
 
-            #TODO: add the stmt.test to the fnc.pct in the right FORMAT
-            #fnc.pct.add(stmt.test)
+            #add the eval_str to the pct
+            evaluation_to_pct(eval_str, fnc)
             
             eval_body(stmt.body, fnc)
 
@@ -343,8 +343,9 @@ def eval_stmt(stmt, fnc):
             print("I became a parent")
             os.close(w)
 
-            #TODO: add the negation of stmt.test to the fnc.pct in the right FORMAT
-            #fnc.pct.add(Not(stmt.test))
+            #added the negation of the eval_str and sent it to the pct
+            eval_str = 'not(' + eval_str + ')'
+            evaluation_to_pct(eval_str, fnc)
 
             eval_body(stmt.orelse, fnc)
             
@@ -385,9 +386,35 @@ def eval_stmt(stmt, fnc):
         # TODO: implement check whether the assertion holds.
         # However do not throw exception in case the assertion does not hold.
         # Instead return inputs that trigger the violation from SymbolicEngine.explore()
+
+        #this should work, if the evaluation_to_pct is properly instantiated
+
+        #save the current pct
+        current_pct = fnc.pct
+
+        assertion_evaluation = eval_stmt(stmt, fnc)
+        evaluation_to_pct(assertion_evaluation, fnc)
+
+        #check the new pct if the assertion does not hold
+        if (fnc.pct.check() != sat):
+            print ("This assertion is not true")
+
+            #TODO:
+            #clean the model of all variables that are not inputs
+            #send the model to the parent if this is not the parent
+            #assertion_violations_to_input needs to have the correct variables
+
+        #set the pct back to before the assertion, because the assertion should not influence our pct
+        fnc.pct = current_pct
         return
         
     raise Exception('Unhandled statement: ' + ast.dump(stmt))
+
+#TODO: fill this in
+def evaluation_to_pct (input_string, fnc):
+    fnc.pct.add(True)
+    return
+
 
 
 #do not change
@@ -410,7 +437,8 @@ def eval_body(body, fnc):
             #TODO: or delete dummy_variables entirely and check if an input variable is not in the output.. 
             # .. and add it with a chosen number to the dicitonary
 
-            #else :
+            else :
+                cleanup_dictionary_to_only_inputs(fnc.symbolic_dict, )
                 
             return
 
@@ -441,6 +469,8 @@ class FunctionEvaluator:
         print self.symbolic_dict #debug
 
         #only the parent of all processes is allowed to return
+        #for this, we need a sole thread to have the parent field set to True ->
+        #whenever a fork occurs, the child has this value set to False
         self.parent = True
     
     #do not change
@@ -474,6 +504,13 @@ def generate_inputs(f, inputs):
             # By default input are set to zero
             inputs[arg.id] = 0
     return inputs
+
+#new
+def cleanup_dictionary_to_only_inputs(input_dict, input_variables):
+    clean_dict = {}
+    clean_dict = input_dict 
+    #TODO: fill everything in
+    return clean_dict
 
 #do not change
 def find_function(p, function_name):
