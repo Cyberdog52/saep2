@@ -283,14 +283,14 @@ def eval_stmt(stmt, fnc):
             if key != fnc.symbolic_dict[key]:
                 #print "Its not trivial" #debug
                 fnc.pct.add(key + " == " + fnc.symbolic_dict[key])
-            else:
+                #else:
                 #print "Its trivial" #debug
                 #if it can be anything, set it to 0
-                #TODO: make sure, dummy_variable is not used in the input program
-                temp = Int(str(key))
-                dummy_variable = Int('dummy_variable' + str(key))
-                fnc.pct.add(temp == dummy_variable)
-                fnc.pct.add(dummy_variable == temp)
+                #dummy_variables are no longer needed because of the cleanup_dictionary method
+                #temp = Int(str(key))
+                #dummy_variable = Int('dummy_variable' + str(key))
+                #fnc.pct.add(temp == dummy_variable)
+                #fnc.pct.add(dummy_variable == temp)
                 #print fnc.pct #debug
 
         global w
@@ -298,7 +298,11 @@ def eval_stmt(stmt, fnc):
             print ("Found a satisfiable stmt") #debug
             sat_model = fnc.pct.model()
             print sat_model #debug
-            sat_dict = model_to_dictionary(sat_model)
+            sat_dict = {}
+            if sat_model: #see if it is not empty
+                sat_dict = model_to_dictionary(sat_model)
+
+            sat_dict = cleanup_dictionary_to_only_inputs(sat_dict, fnc)
 
             if (fnc.parent == True):
                 fnc.values_to_ret.append((sat_dict, fnc.return_val)) 
@@ -445,8 +449,8 @@ def eval_body(body, fnc):
             # .. and add it with a chosen number to the dicitonary
 
             else :
-                #maybe change the fnc.args.args?
-                cleanup_dictionary_to_only_inputs(fnc.symbolic_dict, fnc.f.args.args)
+                #clean up the dictionary
+                fnc.symbolic_dict = cleanup_dictionary_to_only_inputs(fnc.symbolic_dict, fnc)
                 
             return
 
@@ -514,11 +518,20 @@ def generate_inputs(f, inputs):
     return inputs
 
 #new
-def cleanup_dictionary_to_only_inputs(input_dict, input_variables):
-    clean_dict = {}
-    clean_dict = input_dict 
-    #TODO: fill everything in
-    return clean_dict
+def cleanup_dictionary_to_only_inputs(in_dict, fnc):
+    print "Cleaning up", in_dict
+    input_keys = []
+    for arg in fnc.f.args.args:
+        assert (type(arg) == ast.Name)
+        input_keys.append(arg.id)
+    ret_dict = in_dict
+    for k in ret_dict.keys():
+        if k not in input_keys:
+            del ret_dict[k]
+    for elem in input_keys:
+        if elem not in ret_dict:
+            ret_dict[elem] = '0'
+    return ret_dict
 
 #do not change
 def find_function(p, function_name):
