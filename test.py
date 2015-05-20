@@ -1,6 +1,8 @@
 def main(x, y):
-
-	if (x < 3):
+	y = 3
+	# x = 3 #assertion does not get triggered, if this is here
+	assert(True)
+	if (y == 3):
 		if (x < 2):
 			return 0
 		else:
