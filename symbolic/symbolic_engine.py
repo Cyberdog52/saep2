@@ -166,8 +166,18 @@ def eval_expr(expr, fnc, negate):
         
         #creating new context with old pct    
         fnc_eval = FunctionEvaluator(f, fnc.ast_root, inputs)
-        fnc_eval.set_pct(fnc.pct)
-        
+        #just add new pcts to pct after the function call
+        #fnc_eval.set_pct(fnc.pct)
+        for sym in fnc.symbolic_dict:
+            if sym in fnc_eval.symbolic_dict:
+                fnc_eval.symbolic_dict[sym] = fnc.symbolic_dict[sym]
+
+        evres = fnc_eval.eval_symbolic();
+        #add new path constraints from sub_function to fnc
+        #asdf
+        fnc.pct.assert_exprs(fnc_eval.pct.assertions())
+        for res in fnc_eval.values_to_ret:
+            #continue function evaluation
 
         #do this symbolically
         #TODO: lots to do here
