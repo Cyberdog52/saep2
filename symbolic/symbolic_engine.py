@@ -134,8 +134,12 @@ def eval_expr(expr, fnc):
         # Evaluates all function arguments
         for i in range(0, len(expr.args)):
             inputs[f.args.args[i].id] = run_expr(expr.args[i], fnc)
-            
+        
+        #creating new context with old pct    
         fnc_eval = FunctionEvaluator(f, fnc.ast_root, inputs)
+        fnc_eval.set_pct(fnc.pct)
+        
+
         #do this symbolically
         #TODO: lots to do here
         return fnc_eval.eval_symbolic()
@@ -437,6 +441,11 @@ class FunctionEvaluator:
         
         assert (self.returned)
         return self.values_to_ret
+
+    def set_pct(pct, self):
+        #clean pct to be sure 
+        self.pct = Solver()
+        self.pct.assert_exprs(pct.assertions())
 
 
 ####################

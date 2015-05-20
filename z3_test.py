@@ -4,10 +4,23 @@ from z3 import *
 
 import copy
 
+def testf(x):
+    if (x > 3):
+        return True
+    else:
+        return False
+
 s = Solver()
 #s.add(x > 0)
 x = Int ('x')
 s.add(x > 2)
+s.assert_exprs(x>5, x>9)
+s.add(And(True, testf(4)))
+
+print "s assertions: ", s.assertions
+
+
+
 d = Solver()
 d.assert_exprs(s.assertions())
 s.add(False)
