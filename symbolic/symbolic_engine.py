@@ -396,8 +396,9 @@ def eval_stmt(stmt, fnc):
     if type(stmt) == ast.Assign:
         assert (len(stmt.targets) == 1)  # Disallow a=b=c syntax
         lhs = stmt.targets[0]
-        #print stmt.targets[0] #debug
+        print stmt.targets[0] #debug
         rhs = eval_expr(stmt.value, fnc, False)
+
         if type(lhs) == ast.Tuple:
             assert (type(rhs) == tuple)
             assert (len(rhs) == len(lhs.elts))
