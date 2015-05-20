@@ -507,7 +507,7 @@ class FunctionEvaluator:
         self.symbolic_dict = {}
 
         for i in range(0, len(f.args.args)):
-            self.symbolic_dict[f.args.args[i].id] = Int(str(f.args.args[i].id))
+            self.symbolic_dict[f.args.args[i].id] = f.args.args[i].id
 
         print "Symbolic dictionary:", 
         print self.symbolic_dict #debug
