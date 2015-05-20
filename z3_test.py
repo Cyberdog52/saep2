@@ -2,19 +2,23 @@
 
 from z3 import *
 
-x = Int('x')
-y = Int('y')
-dummy_variable = Int('d')
+import copy
+
 s = Solver()
 #s.add(x > 0)
+x = Int ('x')
 s.add(x > 2)
-print s
+d = Solver()
+d.assert_exprs(s.assertions())
+s.add(False)
+d.add(x < 3)
+print "Printing d: ",d
 
 #s.add(y == x + 1)
 
-print(s.check())
-if (s.check() == sat):
-    print(s.model())
+print "D is :", (d.check())
+if (d.check() == sat):
+    print "Model of d:",(d.model())
 
 # Extracts variables used from a Z3 expression
 # Taken from http://z3.codeplex.com/SourceControl/changeset/view/fbce8160252d#src/api/python/z3util.py

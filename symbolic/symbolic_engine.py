@@ -1,5 +1,6 @@
 import ast
 import numbers
+import copy
 
 #import z3 to check assertions and evaluate the pct when reaching a return stmt
 from z3 import *
@@ -304,16 +305,20 @@ def eval_stmt(stmt, fnc):
 
         eval_str = eval_expr(stmt.test, fnc)
 
-        save_pct = fnc.pct
+        save_pct = Solver()
+        save_pct.assert_exprs(fnc.pct.assertions())
 
         evaluation_to_pct(eval_str, fnc)
         new_f = new_body_evaluator(fnc.f, fnc.ast_root, fnc.symbolic_dict, fnc.pct, fnc.values_to_ret)
         eval_body(stmt.body, new_f)
 
-        fnc.pct = save_pct
+        fnc.pct.assert_exprs(save_pct.assertions())
 
         if new_f.values_to_ret:
+            #append the values_to_ret, if there are some
             fnc.values_to_ret.append(new_f.values_to_ret)
+            #flat the list
+            fnc.values_to_ret = [item for sublist in fnc.values_to_ret for item in sublist]
 
         #ELSE Branch
         eval_str = 'not(' + eval_str + ')'
@@ -347,7 +352,8 @@ def eval_stmt(stmt, fnc):
         #this should work, if the evaluation_to_pct is properly instantiated
 
         #save the current pct
-        current_pct = fnc.pct
+        current_pct = Solver()
+        current_pct.assert_exprs(fnc.pct.assertions())
 
         assertion_evaluation = eval_stmt(stmt, fnc)
         evaluation_to_pct(assertion_evaluation, fnc)
@@ -362,7 +368,7 @@ def eval_stmt(stmt, fnc):
             #assertion_violations_to_input needs to have the correct variables
 
         #set the pct back to before the assertion, because the assertion should not influence our pct
-        fnc.pct = current_pct
+        fnc.pct.assert_exprs(current_pct.assertions())
         return
         
     raise Exception('Unhandled statement: ' + ast.dump(stmt))
@@ -456,7 +462,7 @@ def new_body_evaluator(fnc, ast, symbolic_dict, pct, values_to_ret):
     new_input = generate_inputs(fnc, {})
     new_f = FunctionEvaluator(fnc, ast, new_input)
     new_f.symbolic_dict = symbolic_dict.copy()
-    new_f.pct = pct
+    new_f.pct.assert_exprs(pct.assertions())
     new_f.values_to_ret = values_to_ret [:]
     return new_f
 
