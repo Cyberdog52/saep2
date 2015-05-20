@@ -66,30 +66,30 @@ def eval_expr(expr, fnc):
     #additionaly, we need brackets
     if type(expr) == ast.BinOp:
         if type(expr.op) == ast.Add:
-            return '('+ eval_expr(expr.left, fnc) + ')+(' + eval_expr(expr.right, fnc) + ')'
+            return Sum( eval_expr(expr.left, fnc), eval_expr(expr.right, fnc) )
         if type(expr.op) == ast.Sub:
-            return '('+ eval_expr(expr.left, fnc) + ')-(' + eval_expr(expr.right, fnc) + ')'
+            return  eval_expr(expr.left, fnc) - eval_expr(expr.right, fnc)
         if type(expr.op) == ast.Mult:
-            return '('+ eval_expr(expr.left, fnc) + ')*(' + eval_expr(expr.right, fnc) + ')'
+            return Product( eval_expr(expr.left, fnc), eval_expr(expr.right, fnc) )
         if type(expr.op) == ast.Div:
-            return '('+ eval_expr(expr.left, fnc) + ')/(' + eval_expr(expr.right, fnc) + ')'
+            return eval_expr(expr.left, fnc) / eval_expr(expr.right, fnc)
         if type(expr.op) == ast.Mod:
-            return '('+ eval_expr(expr.left, fnc) + ')%(' + eval_expr(expr.right, fnc) + ')'
+            return eval_expr(expr.left, fnc) % eval_expr(expr.right, fnc)
         if type(expr.op) == ast.Pow:
-            return '('+ eval_expr(expr.left, fnc) + ')**(' + eval_expr(expr.right, fnc) + ')'
+            return eval_expr(expr.left, fnc) ** eval_expr(expr.right, fnc)
         
         # Evaluate only with constants
         if type(expr.op) == ast.LShift and type(expr.left) == ast.Num and type(expr.right) == ast.Num:
-            return '('+ eval_expr(expr.left, fnc) + ')<<(' + eval_expr(expr.right, fnc) + ')'
+            return eval_expr(expr.left, fnc) <<  eval_expr(expr.right, fnc)
         if type(expr.op) == ast.RShift and type(expr.left) == ast.Num and type(expr.right) == ast.Num:
-            return '('+ eval_expr(expr.left, fnc) + ')>>(' +  eval_expr(expr.right, fnc) + ')'
+            return LShR(eval_expr(expr.left, fnc),  eval_expr(expr.right, fnc))
 
 
     if type(expr) == ast.UnaryOp:
         if type(expr.op) == ast.Not:
-            return 'not(' + eval_expr(expr.operand, fnc) + ')'
-            if type(expr.op) == ast.USub:
-                return '(0)-(' + eval_expr(expr.operand, fnc) + ')'
+            return Not( eval_expr(expr.operand, fnc))
+           # if type(expr.op) == ast.USub:
+            #    return - eval_expr(expr.operand, fnc) 
 
     if type(expr) == ast.Compare:
         assert (len(expr.ops) == 1)  # Do not allow for x==y==0 syntax
@@ -98,28 +98,31 @@ def eval_expr(expr, fnc):
         op = expr.ops[0]
         e2 = eval_expr(expr.comparators[0], fnc)
         if type(op) == ast.Eq:
-            return '('+ e1 + ')==(' + e2 + ')'
+            return  e1 == e2 
         if type(op) == ast.NotEq:
-            return '('+ e1 + ')!=(' + e2 + ')'
+            return e1 != e2
         if type(op) == ast.Gt:
-            return '('+ e1 + ')>(' + e2 + ')'
+            return e1 > e2 
         if type(op) == ast.GtE:
-            return '('+ e1 + ')>=(' + e2 + ')'
+            return e1 >= e2 
         if type(op) == ast.Lt:
-            return '('+ e1 + ')<(' + e2 + ')'
+            print e1 +'<' + e2 #Debug
+            print e1
+            print e2
+            return e1 < e2 
         if type(op) == ast.LtE:
-            return '('+ e1 + ')<=(' + e2 + ')'
+            return e1 <= e2 
 
     if type(expr) == ast.BoolOp:
         if type(expr.op) == ast.And:
-            r = 'True'
+            r = True
             for v in expr.values:
-                r = '(' +r + ')and(' + eval_expr(v, fnc) + ')'
+                r = And(r, eval_expr(v, fnc) )
             return r
         if type(expr.op) == ast.Or:
-            r = 'False'
+            r = False
             for v in expr.values:
-                r = '(' + r + ')or(' + eval_expr(v, fnc) + ')'
+                r = Or (r ,eval_expr(v, fnc))
             return r
 
     #TODO:
@@ -279,7 +282,7 @@ def eval_stmt(stmt, fnc):
 
         #add the symbolic values in symbolic_dict to the pct
         for key in fnc.symbolic_dict:
-            # print key + " == " + fnc.symbolic_dict[key] #debug
+            #print key + " == " + fnc.symbolic_dict[key] #debug
             #see if it's not trivial
             if key != fnc.symbolic_dict[key]:
                 #print "Its not trivial" #debug
@@ -321,7 +324,7 @@ def eval_stmt(stmt, fnc):
             fnc.values_to_ret = [item for sublist in fnc.values_to_ret for item in sublist]
 
         #ELSE Branch
-        eval_str = 'not(' + eval_str + ')'
+        eval_str = Not (eval_str)
         evaluation_to_pct(eval_str, fnc)
         eval_body(stmt.orelse, fnc)
         return
@@ -420,7 +423,7 @@ class FunctionEvaluator:
         self.symbolic_dict = {}
 
         for i in range(0, len(f.args.args)):
-            self.symbolic_dict[f.args.args[i].id] = str(f.args.args[i].id)
+            self.symbolic_dict[f.args.args[i].id] = f.args.args[i].id
 
         print "Symbolic dictionary:", 
         print self.symbolic_dict #debug
