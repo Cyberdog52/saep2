@@ -57,11 +57,11 @@ def eval_expr(expr, fnc):
         elif expr.id == 'False':
             return 0
         #does this work? if so, it would be brilliant
-        return str(fnc.symbolic_dict[expr.id])
+        return Int(fnc.symbolic_dict[expr.id])
     
     if type(expr) == ast.Num:
         assert (isinstance(expr.n, numbers.Integral))
-        return str(expr.n)
+        return expr.n
 
     #additionaly, we need brackets
     if type(expr) == ast.BinOp:
@@ -106,9 +106,7 @@ def eval_expr(expr, fnc):
         if type(op) == ast.GtE:
             return e1 >= e2 
         if type(op) == ast.Lt:
-            print e1 +'<' + e2 #Debug
-            print e1
-            print e2
+            print "Evaluating", str(e1) +'<' + str(e2) #Debug
             return e1 < e2 
         if type(op) == ast.LtE:
             return e1 <= e2 
@@ -276,7 +274,8 @@ def run_stmt(stmt, fnc):
 #new
 def eval_stmt(stmt, fnc):
     if type(stmt) == ast.Return:
-        fnc.returned = True
+        if fnc.parents_of_all_children:
+            fnc.returned = True
         #should actually be eval_expr
         fnc.return_val = eval_expr(stmt.value, fnc)
 
@@ -299,6 +298,8 @@ def eval_stmt(stmt, fnc):
             sat_dict = cleanup_dictionary_to_only_inputs(sat_dict, fnc)
 
             fnc.values_to_ret.append((sat_dict, fnc.return_val)) 
+        else:
+            print "This is not satisfiable"
     
         return
     
@@ -306,17 +307,25 @@ def eval_stmt(stmt, fnc):
         cond = eval_expr(stmt.test, fnc)
         print (cond)
 
-        eval_str = eval_expr(stmt.test, fnc)
+        eval_expr_result = eval_expr(stmt.test, fnc)
 
+        #save the pct
         save_pct = Solver()
         save_pct.assert_exprs(fnc.pct.assertions())
 
-        evaluation_to_pct(eval_str, fnc)
+        #add it to the pct
+        fnc.pct.add(eval_expr_result)
+
+        #<DEBUG>:
+        if (fnc.pct.check() == sat):
+            print "Model of the if clause: ", fnc.pct.model()
+        #</DEBUG>
+
+        #make a new evaluator that goes along the if stmt and further
         new_f = new_body_evaluator(fnc.f, fnc.ast_root, fnc.symbolic_dict, fnc.pct, fnc.values_to_ret)
         eval_body(stmt.body, new_f)
 
-        fnc.pct.assert_exprs(save_pct.assertions())
-
+       
         if new_f.values_to_ret:
             #append the values_to_ret, if there are some
             fnc.values_to_ret.append(new_f.values_to_ret)
@@ -324,9 +333,27 @@ def eval_stmt(stmt, fnc):
             fnc.values_to_ret = [item for sublist in fnc.values_to_ret for item in sublist]
 
         #ELSE Branch
-        eval_str = Not (eval_str)
-        evaluation_to_pct(eval_str, fnc)
+        #negate the if stmt
+
+        #TODOOOOOOO: this does not work, because the eval_expr_result is true and now false, somehow
+        #fix: add a flag to the eval_expr function that negates the first statement ->
+        # if flag is set, turn a > to a <= and so on
+        eval_expr_result = Not (eval_expr_result)
+
+        #restore the pct
+        fnc.pct.assert_exprs(save_pct.assertions())
+
+        #add the negation of the if stmt to the pct
+        fnc.pct.add(eval_expr_result)
+        
+        #<DEBUG>:
+        if (fnc.pct.check() == sat):
+            print "Model of the else clause: ", fnc.pct.model()
+        #</DEBUG>
+
+        #go on as if nothing happenend in the if block (hopefully, haha)
         eval_body(stmt.orelse, fnc)
+        
         return
     
     #not sure if this works, have not tested it yet
@@ -359,7 +386,7 @@ def eval_stmt(stmt, fnc):
         current_pct.assert_exprs(fnc.pct.assertions())
 
         assertion_evaluation = eval_stmt(stmt, fnc)
-        evaluation_to_pct(assertion_evaluation, fnc)
+        fnc.pct.add(assertion_evaluation)
 
         #check the new pct if the assertion does not hold
         if (fnc.pct.check() != sat):
@@ -418,6 +445,7 @@ class FunctionEvaluator:
         #new
         self.pct = Solver()
         self.values_to_ret = []
+        self.parents_of_all_children = True
 
         #make symbolic dictonary that has as key 'x' and as value '3' or '5/5 + y' (strings!)
         self.symbolic_dict = {}
@@ -467,6 +495,7 @@ def new_body_evaluator(fnc, ast, symbolic_dict, pct, values_to_ret):
     new_f.symbolic_dict = symbolic_dict.copy()
     new_f.pct.assert_exprs(pct.assertions())
     new_f.values_to_ret = values_to_ret [:]
+    new_f.parents_of_all_children = False
     return new_f
 
 #new
