@@ -1,7 +1,10 @@
 def main(x, y):
 
 	if (x < 3):
-		return 0
+		if (x < 2):
+			return 0
+		else:
+			return 3
 	else:
 		return 1
 

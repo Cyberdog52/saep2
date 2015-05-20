@@ -7,7 +7,7 @@ from z3 import *
 #import os to fork an evaluation at an if/else stmt
 import os, sys
 
-r, w = os.pipe() 
+#r, w = os.pipe() 
 
 
 class SymbolicEngine:
@@ -283,17 +283,7 @@ def eval_stmt(stmt, fnc):
             if key != fnc.symbolic_dict[key]:
                 #print "Its not trivial" #debug
                 fnc.pct.add(key + " == " + fnc.symbolic_dict[key])
-                #else:
-                #print "Its trivial" #debug
-                #if it can be anything, set it to 0
-                #dummy_variables are no longer needed because of the cleanup_dictionary method
-                #temp = Int(str(key))
-                #dummy_variable = Int('dummy_variable' + str(key))
-                #fnc.pct.add(temp == dummy_variable)
-                #fnc.pct.add(dummy_variable == temp)
-                #print fnc.pct #debug
 
-        global w
         if (fnc.pct.check() == sat):
             print ("Found a satisfiable stmt") #debug
             sat_model = fnc.pct.model()
@@ -304,70 +294,31 @@ def eval_stmt(stmt, fnc):
 
             sat_dict = cleanup_dictionary_to_only_inputs(sat_dict, fnc)
 
-            if (fnc.parent == True):
-                fnc.values_to_ret.append((sat_dict, fnc.return_val)) 
-            else:
-
-                #TODO: fix pipe if we have 3 threads with one thread as parent and child
-                w = os.fdopen(w, 'w')
-                print "Child writing"
-                #maybe use another symbol to split  the two values in the char-stream?
-                w.write(str(sat_dict) + "&" + str(fnc.return_val))
-                w.close()
-                print "Child closing"
-        else:
-            if (fnc.parent == False):
-                w = os.fdopen(w, 'w')
-                print "Child writing"
-                #tell the parent that you didnt find anything, tell the parent that you were useless
-                w.write("Sorry Mum, I found nothing")
-                w.close()
-                print "Child closing"
+            fnc.values_to_ret.append((sat_dict, fnc.return_val)) 
+    
         return
     
     if type(stmt) == ast.If:
-        #will be eval_expr
         cond = eval_expr(stmt.test, fnc)
         print (cond)
+
         eval_str = eval_expr(stmt.test, fnc)
 
-        #fork to evaluate both if and else bodies
-        pid = os.fork()
-        if (pid == 0):
-            #child
-            print ("A child was born")
-            os.close(r)
-            fnc.parent = False
+        save_pct = fnc.pct
 
-            #add the eval_str to the pct
-            evaluation_to_pct(eval_str, fnc)
-            
-            eval_body(stmt.body, fnc)
+        evaluation_to_pct(eval_str, fnc)
+        new_f = new_body_evaluator(fnc.f, fnc.ast_root, fnc.symbolic_dict, fnc.pct, fnc.values_to_ret)
+        eval_body(stmt.body, new_f)
 
-        else:
-            #parent
-            print("I became a parent")
-            os.close(w)
+        fnc.pct = save_pct
 
-            #added the negation of the eval_str and sent it to the pct
-            eval_str = 'not(' + eval_str + ')'
-            evaluation_to_pct(eval_str, fnc)
+        if new_f.values_to_ret:
+            fnc.values_to_ret.append(new_f.values_to_ret)
 
-            eval_body(stmt.orelse, fnc)
-            
-            #read what the child has to say and add it to values_to_ret
-            read_pipe = os.fdopen(r)
-            print ("Parent reading")
-            pipe_string = read_pipe.read()
-            if (pipe_string != "Sorry Mum, I found nothing"):
-                k,v = pipe_string.split("&")
-                new_dict = eval(k)
-                new_val = Int(v)
-                print (new_dict, new_val)
-                fnc.values_to_ret.append((new_dict,new_val))
-            #wait for the child to kill itself
-            os.waitpid(pid,0)
-            #go on like you'd never have been a parent, but you're wiser now
+        #ELSE Branch
+        eval_str = 'not(' + eval_str + ')'
+        evaluation_to_pct(eval_str, fnc)
+        eval_body(stmt.orelse, fnc)
         return
     
     #not sure if this works, have not tested it yet
@@ -440,18 +391,6 @@ def eval_body(body, fnc):
     for stmt in body:
         eval_stmt(stmt, fnc)
         if fnc.returned:
-            #kill process if it's a child
-            if fnc.parent == False:
-                sys.exit(0)
-
-            #TODO: delete the dummy_variables from the output 
-            #TODO: or delete dummy_variables entirely and check if an input variable is not in the output.. 
-            # .. and add it with a chosen number to the dicitonary
-
-            else :
-                #clean up the dictionary
-                fnc.symbolic_dict = cleanup_dictionary_to_only_inputs(fnc.symbolic_dict, fnc)
-                
             return
 
 
@@ -479,11 +418,6 @@ class FunctionEvaluator:
 
         print "Symbolic dictionary:", 
         print self.symbolic_dict #debug
-
-        #only the parent of all processes is allowed to return
-        #for this, we need a sole thread to have the parent field set to True ->
-        #whenever a fork occurs, the child has this value set to False
-        self.parent = True
     
     #do not change
     def eval(self):
@@ -516,6 +450,15 @@ def generate_inputs(f, inputs):
             # By default input are set to zero
             inputs[arg.id] = 0
     return inputs
+
+#new
+def new_body_evaluator(fnc, ast, symbolic_dict, pct, values_to_ret):
+    new_input = generate_inputs(fnc, {})
+    new_f = FunctionEvaluator(fnc, ast, new_input)
+    new_f.symbolic_dict = symbolic_dict.copy()
+    new_f.pct = pct
+    new_f.values_to_ret = values_to_ret [:]
+    return new_f
 
 #new
 def cleanup_dictionary_to_only_inputs(in_dict, fnc):
