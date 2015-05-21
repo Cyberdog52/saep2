@@ -48,14 +48,14 @@ def eval_expr(expr, fnc, negate):
     if type(expr) == ast.Name:
         if expr.id == 'True':
             if negate:
-                return 0
+                return Int(0)
             else: 
-                return 1
+                return Int(1)
         elif expr.id == 'False':
             if negate:
-                return 1
+                return Int(1)
             else: 
-                return 0
+                return Int(0)
         return Int(str(fnc.symbolic_dict[expr.id]))
     
     if type(expr) == ast.Num:
