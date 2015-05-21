@@ -56,7 +56,7 @@ def eval_expr(expr, fnc, negate):
                 return 1
             else: 
                 return 0
-        return fnc.symbolic_dict[expr.id]
+        return Int(str(fnc.symbolic_dict[expr.id]))
     
     if type(expr) == ast.Num:
         assert (isinstance(expr.n, numbers.Integral))
