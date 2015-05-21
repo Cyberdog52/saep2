@@ -1,19 +1,20 @@
-'''
+
 def main(x, y):
-	y = 5
+	#y=3
 	# x = 3 #assertion does not get triggered, if this is here
-	#assert(True)
+	assert(x>5)
 	if (y == 3):
+
 		if (x < 2):
+
 			return 0
 		else:
-			return -1
+			x=4
 	else:
-		return 1
+		return 8
 
-	#x=10
-	return x
-	'''
+	return 6
+
 
 # def twice(v): 
 # 	return v + v
@@ -25,6 +26,4 @@ def main(x, y):
 # 		return 1 
 # 	return 0
 
-#if-test
-def main(x):
-	if()
+
