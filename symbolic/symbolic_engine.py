@@ -99,7 +99,7 @@ def eval_expr(expr, fnc, negate):
         op = expr.ops[0]
         e2 = eval_expr(expr.comparators[0], fnc, False)
         if type(op) == ast.Eq:
-            print "Evaluating", str(e1) +'==' + str(e2) #Debug
+            #print "Evaluating", str(e1) +'==' + str(e2) #Debug
             if negate:
                 return e1 != e2
             else:
@@ -120,7 +120,7 @@ def eval_expr(expr, fnc, negate):
             else: 
                 return e1 >= e2 
         if type(op) == ast.Lt:
-            print "Evaluating", str(e1) +'<' + str(e2) #Debug
+            #print "Evaluating", str(e1) +'<' + str(e2) #Debug
             if negate:
                 return e1 >= e2
             else: 
@@ -405,9 +405,6 @@ def eval_stmt(stmt, fnc):
         
         return
     
-    #not sure if this works, have not tested it yet
-
-    #TODO: there is a problem here!
     if type(stmt) == ast.Assign:
         assert (len(stmt.targets) == 1)  # Disallow a=b=c syntax
         lhs = stmt.targets[0]
@@ -448,14 +445,14 @@ def eval_stmt(stmt, fnc):
         if (fnc.pct.check() == sat):
             print ("We found a violating assertion")
 
-            #TODO:
-            #clean the model of all variables that are not inputs
+            
             assertion_model = fnc.pct.model()
 
             assertion_dict = model_to_dictionary(assertion_model)
-
+            
+            #clean the model of all variables that are not inputs
             assertion_dict = cleanup_dictionary_to_only_inputs(assertion_dict, fnc)
-
+            
             fnc.assertion_violation_dict[stmt] = assertion_dict
 
             print "Assertion dict of violations so far:"
@@ -473,17 +470,6 @@ def eval_stmt(stmt, fnc):
         return
         
     raise Exception('Unhandled statement: ' + ast.dump(stmt))
-
-#translates a string like     ((((x)+(y))==(0))and(((x)*(2))==(10)))or((a)or(not((b)==(False))))
-#to   Or(And(x+y==0,x*2==10),Or(a,Not(b == False)))
-#make sure, that variables like x are stored as Int('x')
-#it might even not be a problem to store b also as an Int, because Bool is a subclass of Int
-#attention to the only unary operation not!
-#TODO: fill this in
-def evaluation_to_pct (input_string, fnc):
-    fnc.pct.add(True)
-    # look at the brackets somehow
-    return
 
 
 #do not change
