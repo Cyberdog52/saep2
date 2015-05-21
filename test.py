@@ -1,17 +1,18 @@
 def main(x, y):
-	y = 5
+	y=3
 	# x = 3 #assertion does not get triggered, if this is here
-	#assert(True)
+	#assert(y<6)
 	if (y == 3):
+
 		if (x < 2):
+			y=7
 			return 0
 		else:
 			return -1
 	else:
-		return 1
+		return 7
 
-	#x=10
-	return x
+	return 6
 
 # def twice(v): 
 # 	return v + v

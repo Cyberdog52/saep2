@@ -56,14 +56,12 @@ def eval_expr(expr, fnc, negate):
                 return 1
             else: 
                 return 0
-        #does this work? if so, it would be brilliant
-        return Int(fnc.symbolic_dict[expr.id])
+        return fnc.symbolic_dict[expr.id]
     
     if type(expr) == ast.Num:
         assert (isinstance(expr.n, numbers.Integral))
         return expr.n
 
-    #additionaly, we need brackets
     if type(expr) == ast.BinOp:
         if type(expr.op) == ast.Add:
             return Sum( eval_expr(expr.left, fnc, negate), eval_expr(expr.right, fnc, negate) )
@@ -101,6 +99,7 @@ def eval_expr(expr, fnc, negate):
         op = expr.ops[0]
         e2 = eval_expr(expr.comparators[0], fnc, False)
         if type(op) == ast.Eq:
+            print "Evaluating", str(e1) +'==' + str(e2) #Debug
             if negate:
                 return e1 != e2
             else:
@@ -165,23 +164,23 @@ def eval_expr(expr, fnc, negate):
             inputs[f.args.args[i].id] = run_expr(expr.args[i], fnc)
         
         #creating new context with old pct    
-        fnc_eval = FunctionEvaluator(f, fnc.ast_root, inputs)
+     #   fnc_eval = FunctionEvaluator(f, fnc.ast_root, inputs)
         #just add new pcts to pct after the function call
         #fnc_eval.set_pct(fnc.pct)
-        for sym in fnc.symbolic_dict:
-            if sym in fnc_eval.symbolic_dict:
-                fnc_eval.symbolic_dict[sym] = fnc.symbolic_dict[sym]
+     #   for sym in fnc.symbolic_dict:
+     #       if sym in fnc_eval.symbolic_dict:
+     #           fnc_eval.symbolic_dict[sym] = fnc.symbolic_dict[sym]
 
-        evres = fnc_eval.eval_symbolic();
+     #   evres = fnc_eval.eval_symbolic();
         #add new path constraints from sub_function to fnc
         #asdf
-        fnc.pct.assert_exprs(fnc_eval.pct.assertions())
-        for res in fnc_eval.values_to_ret:
+     #   fnc.pct.assert_exprs(fnc_eval.pct.assertions())
+     #   for res in fnc_eval.values_to_ret:
             #continue function evaluation
 
         #do this symbolically
         #TODO: lots to do here
-        return fnc_eval.eval_symbolic()
+     #   return fnc_eval.eval_symbolic()
         
     raise Exception('Unhandled expression: ' + ast.dump(expr))
 
@@ -347,7 +346,7 @@ def eval_stmt(stmt, fnc):
     
     if type(stmt) == ast.If:
         cond = eval_expr(stmt.test, fnc, False)
-        print (cond)
+        print 'Condition:', (cond)
 
         eval_expr_result = eval_expr(stmt.test, fnc, False)
 
@@ -357,6 +356,8 @@ def eval_stmt(stmt, fnc):
 
         #add it to the pct
         fnc.pct.add(eval_expr_result)
+
+        print 'pct:', fnc.pct
 
         #<DEBUG>:
         if (fnc.pct.check() == sat):
@@ -410,8 +411,8 @@ def eval_stmt(stmt, fnc):
     if type(stmt) == ast.Assign:
         assert (len(stmt.targets) == 1)  # Disallow a=b=c syntax
         lhs = stmt.targets[0]
-        print stmt.targets[0] #debug
         rhs = eval_expr(stmt.value, fnc, False)
+
 
         if type(lhs) == ast.Tuple:
             assert (type(rhs) == tuple)
@@ -435,6 +436,7 @@ def eval_stmt(stmt, fnc):
         #save the current pct
         current_pct = Solver()
         current_pct.assert_exprs(fnc.pct.assertions())
+
 
         #evaluate this with eval_expr flag set to TRUE -> negate assertion
         # if its satisfiable, we have a model that violates the original assertion
@@ -543,6 +545,7 @@ class FunctionEvaluator:
     def set_pct(pct, self):
         #clean pct to be sure 
         self.pct = Solver()
+
         self.pct.assert_exprs(pct.assertions())
 
 
