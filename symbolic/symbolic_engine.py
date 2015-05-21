@@ -371,7 +371,7 @@ def eval_stmt(stmt, fnc):
         stmt_save = fnc.stmts_to_eval[:]
         new_f = new_body_evaluator(fnc.f, fnc.ast_root, fnc.symbolic_dict, fnc.pct, fnc.values_to_ret)
         #stmts to eval changes to the if-path
-        fnc.stmts_to_eval.append(stmt.body);
+        fnc.stmts_to_eval = stmt.body + fnc.stmts_to_eval
         new_f.stmts_to_eval = fnc.stmts_to_eval
         eval_body(new_f.stmts_to_eval, new_f)
 
@@ -492,7 +492,7 @@ def run_body(body, fnc):
 def eval_body(body, fnc):
     #attention! eval_body now pops statements from body
     #if this is unwanted, copy list beforehands
-    for i in range(len(body))
+    for i in range(len(body)):
         stmt = body.pop(0)
         eval_stmt(stmt, fnc)
         if fnc.returned:
@@ -511,7 +511,7 @@ class FunctionEvaluator:
         self.ast_root = ast_root
         self.f = f
         #new to evaluate branches
-        self.stms_to_eval = self.f.body[:]
+        self.stmts_to_eval = self.f.body[:]
 
         #new
         self.pct = Solver()
