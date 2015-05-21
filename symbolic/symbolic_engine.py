@@ -168,6 +168,7 @@ def eval_expr(expr, fnc, negate):
         fnc_eval = FunctionEvaluator(f, fnc.ast_root, inputs)
         #just add new pcts to pct after the function call
         #fnc_eval.set_pct(fnc.pct)
+        '''
         for sym in fnc.symbolic_dict:
             if sym in fnc_eval.symbolic_dict:
                 fnc_eval.symbolic_dict[sym] = fnc.symbolic_dict[sym]
@@ -180,6 +181,7 @@ def eval_expr(expr, fnc, negate):
             #continue function evaluation
 
         #do this symbolically
+        '''
         #TODO: lots to do here
         return fnc_eval.eval_symbolic()
         
@@ -364,8 +366,13 @@ def eval_stmt(stmt, fnc):
         #</DEBUG>
 
         #make a new evaluator that goes along the if stmt and further
+        #save old function stack
+        stmt_save = fnc.stmts_to_eval[:]
         new_f = new_body_evaluator(fnc.f, fnc.ast_root, fnc.symbolic_dict, fnc.pct, fnc.values_to_ret)
-        eval_body(stmt.body, new_f)
+        #stmts to eval changes to the if-path
+        fnc.stmts_to_eval.append(stmt.body);
+        new_f.stmts_to_eval = fnc.stmts_to_eval
+        eval_body(new_f.stmts_to_eval, new_f)
 
        
         if new_f.values_to_ret:
@@ -380,6 +387,8 @@ def eval_stmt(stmt, fnc):
         #TODOOOOOOO: this does not work, because the eval_expr_result is true and now false, somehow
         #fix: add a flag to the eval_expr function that negates the first statement ->
         # if flag is set, turn a > to a <= and so on
+        #restore stmts_to_eval first, then proceed as usual
+        fnc.stmts_to_eval = stmt_save
         eval_expr_result = eval_expr(stmt.test, fnc, True)
 
         print "Else condition: ", eval_expr_result
@@ -493,7 +502,10 @@ def run_body(body, fnc):
 
 #new
 def eval_body(body, fnc):
-    for stmt in body:
+    #attention! eval_body now pops statements from body
+    #if this is unwanted, copy list beforehands
+    for i in range(len(body))
+        stmt = body.pop(0)
         eval_stmt(stmt, fnc)
         if fnc.returned:
             return
@@ -510,6 +522,8 @@ class FunctionEvaluator:
         self.return_val = None
         self.ast_root = ast_root
         self.f = f
+        #new to evaluate branches
+        self.stms_to_eval = self.f.body[:]
 
         #new
         self.pct = Solver()
@@ -535,8 +549,10 @@ class FunctionEvaluator:
         return self.return_val
 
     def eval_symbolic(self):
-        eval_body(self.f.body, self)
-        
+        #do we need this? just to be sure in all cases
+        #self.stms_to_eval = self.f.body[:]
+        eval_body(self.stmts_to_eval, self)
+
         assert (self.returned)
         return self.values_to_ret
 

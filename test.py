@@ -1,3 +1,4 @@
+'''
 def main(x, y):
 	y = 5
 	# x = 3 #assertion does not get triggered, if this is here
@@ -12,6 +13,7 @@ def main(x, y):
 
 	#x=10
 	return x
+	'''
 
 # def twice(v): 
 # 	return v + v
@@ -22,3 +24,7 @@ def main(x, y):
 # 			return -1
 # 		return 1 
 # 	return 0
+
+#if-test
+def main(x):
+	if()
