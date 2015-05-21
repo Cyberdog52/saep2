@@ -198,7 +198,7 @@ def run_expr(expr, fnc):
         if expr.id == 'True':
             return 1
         elif expr.id == 'False':
-            return 0
+            return 0   
         return fnc.state[expr.id]
     
     if type(expr) == ast.Num:
@@ -320,16 +320,20 @@ def eval_stmt(stmt, fnc):
         if fnc.parents_of_all_children:
             fnc.returned = True
         #should actually be eval_expr
+        #TODO:Here is a problem
         fnc.return_val = eval_expr(stmt.value, fnc, False)
+        print 'Return value:', eval_expr(stmt.value, fnc, False)#Debug
 
         #add the symbolic values in symbolic_dict to the pct
         for key in fnc.symbolic_dict:
-            #print key + " == " + fnc.symbolic_dict[key] #debug
+            print str(key) + " == " + str(fnc.symbolic_dict[key]) #debug
             #see if it's not trivial
-            if key != fnc.symbolic_dict[key]:
-                #print "Its not trivial" #debug
+            print 'Symbolic Dict:', fnc.symbolic_dict
+            if str(key) != str(fnc.symbolic_dict[key]):
+                print "Its not trivial" #debug
                 fnc.pct.add(Int(key) == fnc.symbolic_dict[key])
-
+                print 'pct:', fnc.pct  
+             
         if (fnc.pct.check() == sat):
             print ("Found a satisfiable stmt") #debug
             sat_model = fnc.pct.model()
@@ -340,10 +344,12 @@ def eval_stmt(stmt, fnc):
 
             sat_dict = cleanup_dictionary_to_only_inputs(sat_dict, fnc)
 
+            real_eval = FunctionEvaluator(fnc.f, fnc.ast_root, sat_dict)
+            real_eval.eval()
+            fnc.return_val = real_eval.return_val
             fnc.values_to_ret.append((sat_dict, fnc.return_val)) 
         else:
             print "This is not satisfiable"
-    
         return
     
     if type(stmt) == ast.If:
@@ -418,6 +424,7 @@ def eval_stmt(stmt, fnc):
         assert (len(stmt.targets) == 1)  # Disallow a=b=c syntax
         lhs = stmt.targets[0]
         rhs = eval_expr(stmt.value, fnc, False)
+        print 'lhs, rhs',lhs, rhs #Debug
 
 
         if type(lhs) == ast.Tuple:
@@ -430,6 +437,7 @@ def eval_stmt(stmt, fnc):
             return
         if type(lhs) == ast.Name:
             fnc.symbolic_dict[lhs.id] = rhs
+            print 'Symbolic Dict:',fnc.symbolic_dict
             return
 
     if type(stmt) == ast.Assert:
