@@ -2,7 +2,7 @@
 def main(x):
 	return 5
 '''
-#'''
+'''
 def main(x):
 	if (x < 0):
 		return -1
@@ -12,8 +12,8 @@ def main(x):
 #def main(x,y):
 #	return g(x)
 
-#'''
 '''
+#'''
 def main(x, y):
 	#y=3
 	# x = 3 #assertion does not get triggered, if this is here
@@ -29,7 +29,7 @@ def main(x, y):
 		return 8
 
 	return x
-'''
+#'''
 '''
 
 # def twice(v): 

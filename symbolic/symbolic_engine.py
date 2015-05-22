@@ -206,7 +206,14 @@ def run_expr(expr, fnc):
         if expr.id == 'True':
             return 1
         elif expr.id == 'False':
-            return 0   
+            return 0
+
+        print ""
+        print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        print ""
+        print "Checking states"
+        print "returning " + str(expr.id) + " with value " + str(fnc.state[expr.id])
+
         return fnc.state[expr.id]
     
     if type(expr) == ast.Num:
@@ -330,17 +337,15 @@ def eval_stmt(stmt, fnc):
         #should actually be eval_expr
         #TODO:Here is a problem
         fnc.return_val = eval_expr(stmt.value, fnc, False)
-        print 'Return value:', eval_expr(stmt.value, fnc, False)#Debug
+        print 'Return value1:', eval_expr(stmt.value, fnc, False)#Debug
 
         #if it is a sub-function, just save the pct and return value accordingly, else call sat solver etc
         if(fnc.is_sub_fun):
             fnc.ret_pct_list.append((fnc.return_val, fnc.pct.assertions()))
         else:
         #add the symbolic values in symbolic_dict to the pct
+            print 'Symbolic Dict:', fnc.symbolic_dict
             for key in fnc.symbolic_dict:
-                print str(key) + " == " + str(fnc.symbolic_dict[key]) #debug
-                #see if it's not trivial
-                print 'Symbolic Dict:', fnc.symbolic_dict
                 if str(key) != str(fnc.symbolic_dict[key]):
                     print "Its not trivial" #debug
                     fnc.pct.add(Int(key) == fnc.symbolic_dict[key])
@@ -356,25 +361,29 @@ def eval_stmt(stmt, fnc):
 
                 sat_dict = cleanup_dictionary_to_only_inputs(sat_dict, fnc)
 
-                print 'Return value:', fnc.return_val
+                print 'Return value2:', fnc.return_val
 
-                if not isinstance(fnc.return_val, int):
-                    print str(fnc.return_val) + " must be evaluated with", sat_dict
-                    #still not sure if this works properly..
-                    real_eval = FunctionEvaluator(fnc.f, fnc.ast_root, sat_dict)
-                    
-                    ret = real_eval.eval()
-                    print "Ret: " + str(ret)
-                    fnc.return_val = ret
-                    assert(isinstance(fnc.return_val, int))
+                #if not isinstance(fnc.return_val, int):
+                print str(fnc.return_val) + " must be evaluated with", sat_dict
+                #still not sure if this works properly..
+                real_eval = FunctionEvaluator(fnc.f, fnc.ast_root, sat_dict)
+                
+                ret = real_eval.eval()
+                print "Ret: " + str(ret)
+                fnc.return_val = ret
+                assert(isinstance(fnc.return_val, int))
 
                 print "Appending " , str(fnc.return_val)
+                for s in fnc.stmts_to_eval:
+                    print "!!To evaluate!! ", s
                 print ""
                 print ""
 
-                fnc.values_to_ret.append((sat_dict, fnc.return_val)) 
+                fnc.values_to_ret.append((sat_dict, fnc.return_val))
             else:
                 print "This is not satisfiable"
+            #return ends the evaluation
+            fnc.stmts_to_eval = [] 
         return
     
     if type(stmt) == ast.If:
@@ -404,7 +413,9 @@ def eval_stmt(stmt, fnc):
         new_f.is_sub_fun = fnc.is_sub_fun
         #stmts to eval changes to the if-path
         new_f.stmts_to_eval = stmt.body + stmts_copy
-        eval_body(new_f.stmts_to_eval, new_f) 
+        print "real next stmt is: ", new_f.stmts_to_eval[0]
+        #eval_body(new_f.stmts_to_eval, new_f)
+        eval_stmts_to_eval(new_f) 
        
         if new_f.values_to_ret:
             print "<<<< If statement returned with: ", new_f.values_to_ret, ">>>>>>>"
@@ -441,7 +452,11 @@ def eval_stmt(stmt, fnc):
         #</DEBUG>
 
         #go on as if nothing happenend in the if block (hopefully, haha)
-        eval_body(stmt.orelse[:], fnc)
+        #in order to have a consistency with the form of a body: a body now always consists of a "whole function"
+        fnc.stmts_to_eval = stmt.orelse[:] + fnc.stmts_to_eval
+        #eval_body(fnc.stmts_to_eval, fnc)
+        eval_stmts_to_eval(fnc)
+        fnc.stmts_to_eval = []
         
         return
     
@@ -536,6 +551,17 @@ def eval_body(body, fnc):
         if fnc.returned:
             return
 
+def eval_stmts_to_eval(fnc):
+    #global current_body
+    #current_body.body = fnc.stmts_to_eval
+
+    while len(fnc.stmts_to_eval) > 0: 
+        #current_body.index = i
+        stmt = fnc.stmts_to_eval.pop(0)
+        eval_stmt(stmt, fnc)
+        if fnc.returned:
+            return
+
 
 class FunctionEvaluator:
     def __init__(self, f, ast_root, inputs):
@@ -573,7 +599,7 @@ class FunctionEvaluator:
         print "--- New Evaluator ----"
         print "Symbolic dictionary:", self.symbolic_dict #debug
         print "States: ", self.state
-        print "Next stmt to evaluate: ", self.f.body[0]
+        print "Next stmt to evaluate: ", self.stmts_to_eval[0]
         print "-----------------------"
         print ""
     
@@ -587,7 +613,8 @@ class FunctionEvaluator:
     def eval_symbolic(self):
         #do we need this? just to be sure in all cases
         #self.stms_to_eval = self.f.body[:]
-        eval_body(self.stmts_to_eval, self)
+        #eval_body(self.stmts_to_eval, self)
+        eval_stmts_to_eval(self)
 
         assert (self.returned)
         return self.values_to_ret
@@ -606,12 +633,12 @@ class FunctionEvaluator:
 # f: function for which to generate inputs
 # inputs: dictionary that maps argument names to values. e.g. {'x': 42 }
 #do not change
-def generate_inputs(f, inputs):
+def generate_inputs(f, custom_inputs):
     inputs = {}
     for arg in f.args.args:
         assert (type(arg) == ast.Name)
-        if arg.id in inputs:
-            inputs[arg.id] = inputs[arg.id]
+        if arg.id in custom_inputs:
+            inputs[arg.id] = custom_inputs[arg.id]
         else:
             # By default input are set to zero
             inputs[arg.id] = 0
@@ -624,6 +651,7 @@ def new_body_evaluator(fnc, ast, symbolic_dict, pct, values_to_ret):
     new_f.symbolic_dict = symbolic_dict.copy()
     new_f.pct = Solver()
     new_f.pct.assert_exprs(pct.assertions())
+    print "new FE pct: ", new_f.pct.assertions()
     new_f.values_to_ret = values_to_ret [:]
     new_f.parents_of_all_children = False
     return new_f
