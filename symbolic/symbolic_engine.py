@@ -324,37 +324,37 @@ def eval_stmt(stmt, fnc):
         fnc.return_val = eval_expr(stmt.value, fnc, False)
         print 'Return value:', eval_expr(stmt.value, fnc, False)#Debug
 
-<<<<<<< HEAD
+#<<<<<<< HEAD
         #if it is a sub-function, just save the pct and return value accordingly, else call sat solver etc
         if(fnc.is_sub_fun):
             fnc.ret_pct_list.append((fnc.return_val, fnc.pct.assertions()))
         else:
         #add the symbolic values in symbolic_dict to the pct
-        for key in fnc.symbolic_dict:
-            print str(key) + " == " + str(fnc.symbolic_dict[key]) #debug
-            #see if it's not trivial
-            print 'Symbolic Dict:', fnc.symbolic_dict
-            if str(key) != str(fnc.symbolic_dict[key]):
-                print "Its not trivial" #debug
-                fnc.pct.add(Int(key) == fnc.symbolic_dict[key])
-                print 'pct:', fnc.pct  
-             
-        if (fnc.pct.check() == sat):
-            print ("Found a satisfiable stmt") #debug
-            sat_model = fnc.pct.model()
-            print sat_model #debug
-            sat_dict = {}
-            if sat_model: #see if it is not empty
-                sat_dict = model_to_dictionary(sat_model)
+            for key in fnc.symbolic_dict:
+                print str(key) + " == " + str(fnc.symbolic_dict[key]) #debug
+                #see if it's not trivial
+                print 'Symbolic Dict:', fnc.symbolic_dict
+                if str(key) != str(fnc.symbolic_dict[key]):
+                    print "Its not trivial" #debug
+                    fnc.pct.add(Int(key) == fnc.symbolic_dict[key])
+                    print 'pct:', fnc.pct  
+                 
+            if (fnc.pct.check() == sat):
+                print ("Found a satisfiable stmt") #debug
+                sat_model = fnc.pct.model()
+                print sat_model #debug
+                sat_dict = {}
+                if sat_model: #see if it is not empty
+                    sat_dict = model_to_dictionary(sat_model)
 
-            sat_dict = cleanup_dictionary_to_only_inputs(sat_dict, fnc)
+                sat_dict = cleanup_dictionary_to_only_inputs(sat_dict, fnc)
 
-            real_eval = FunctionEvaluator(fnc.f, fnc.ast_root, sat_dict)
-            real_eval.eval()
-            fnc.return_val = real_eval.return_val
-            fnc.values_to_ret.append((sat_dict, fnc.return_val)) 
-        else:
-            print "This is not satisfiable"
+                real_eval = FunctionEvaluator(fnc.f, fnc.ast_root, sat_dict)
+                real_eval.eval()
+                fnc.return_val = real_eval.return_val
+                fnc.values_to_ret.append((sat_dict, fnc.return_val)) 
+            else:
+                print "This is not satisfiable"
         return
     
     if type(stmt) == ast.If:
@@ -388,16 +388,13 @@ def eval_stmt(stmt, fnc):
         eval_body(new_f.stmts_to_eval, new_f)
 
        
+       
         if new_f.values_to_ret:
-            #append the values_to_ret, if there are some
-            fnc.values_to_ret.append(new_f.values_to_ret)
-            #flat the list
-            fnc.values_to_ret = [item for sublist in fnc.values_to_ret for item in sublist]
-
+             fnc.values_to_ret = fnc.values_to_ret + new_f.values_to_ret
+       
         if new_f.ret_pct_list:
-            fnc.ret_pct_list.append(new_f.ret_pct_list)
-            fnc.ret_pct_list = [item for sublist in fnc.ret_pct_list for item in sublist]
-
+            fnc.ret_pct_list = fnc.ret_pct_list + new_f.ret_pct_list
+       
         #ELSE Branch
         #negate the if stmt
 
