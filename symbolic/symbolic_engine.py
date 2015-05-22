@@ -45,7 +45,6 @@ class BodyState:
 current_body = None
 
 #new
-# turn everything into a string, such that the expression is not run
 def eval_expr(expr, fnc, negate):
     if type(expr) == ast.Tuple:
         r = []
@@ -159,8 +158,6 @@ def eval_expr(expr, fnc, negate):
             return r
 
     #TODO:
-    # check if the symbols used in the function call might interfere with this function
-    # handle all the complifications of a function call
     # lots to do here!
     if type(expr) == ast.Call:
         f = find_function(fnc.ast_root, expr.func.id)
@@ -325,12 +322,9 @@ def run_stmt(stmt, fnc):
 #new
 def eval_stmt(stmt, fnc):
     if type(stmt) == ast.Return:
-        if fnc.parents_of_all_children:
-            fnc.returned = True
         #should actually be eval_expr
         #TODO:Here is a problem
         fnc.return_val = eval_expr(stmt.value, fnc, False)
-        print 'Return value:', eval_expr(stmt.value, fnc, False)#Debug
 
         #if it is a sub-function, just save the pct and return value accordingly, else call sat solver etc
         if(fnc.is_sub_fun):
@@ -349,7 +343,6 @@ def eval_stmt(stmt, fnc):
             if (fnc.pct.check() == sat):
                 print ("Found a satisfiable stmt") #debug
                 sat_model = fnc.pct.model()
-                print sat_model #debug
                 sat_dict = {}
                 if sat_model: #see if it is not empty
                     sat_dict = model_to_dictionary(sat_model)
@@ -358,20 +351,11 @@ def eval_stmt(stmt, fnc):
 
                 print 'Return value:', fnc.return_val
 
-                if not isinstance(fnc.return_val, int):
-                    print str(fnc.return_val) + " must be evaluated with", sat_dict
-                    #still not sure if this works properly..
-                    real_eval = FunctionEvaluator(fnc.f, fnc.ast_root, sat_dict)
                     
-                    ret = real_eval.eval()
-                    print "Ret: " + str(ret)
-                    fnc.return_val = ret
-                    assert(isinstance(fnc.return_val, int))
 
                 print "Appending " , str(fnc.return_val)
                 print ""
                 print ""
-
                 fnc.values_to_ret.append((sat_dict, fnc.return_val)) 
             else:
                 print "This is not satisfiable"
@@ -402,9 +386,7 @@ def eval_stmt(stmt, fnc):
         stmts_copy = fnc.stmts_to_eval[:]
         new_f = new_body_evaluator(fnc.f, fnc.ast_root, fnc.symbolic_dict, fnc.pct, fnc.values_to_ret)
         new_f.is_sub_fun = fnc.is_sub_fun
-        #stmts to eval changes to the if-path
         new_f.stmts_to_eval = stmt.body + stmts_copy
-        eval_body(new_f.stmts_to_eval, new_f) 
        
         if new_f.values_to_ret:
             print "<<<< If statement returned with: ", new_f.values_to_ret, ">>>>>>>"
@@ -441,7 +423,6 @@ def eval_stmt(stmt, fnc):
         #</DEBUG>
 
         #go on as if nothing happenend in the if block (hopefully, haha)
-        eval_body(stmt.orelse[:], fnc)
         
         return
     
@@ -528,7 +509,6 @@ def eval_body(body, fnc):
     #first save the body in "curent_body"
     global current_body
     current_body.body = body[:]
-
     for i in range(len(body)):
         current_body.index = i
         stmt = body.pop(0)
