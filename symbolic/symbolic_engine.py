@@ -163,26 +163,26 @@ def eval_expr(expr, fnc, negate):
         for i in range(0, len(expr.args)):
             inputs[f.args.args[i].id] = run_expr(expr.args[i], fnc)
         
-        #creating new context with old pct    
-     #   fnc_eval = FunctionEvaluator(f, fnc.ast_root, inputs)
-        #just add new pcts to pct after the function call
-        #fnc_eval.set_pct(fnc.pct)
-        '''
+        #creating new context  
+        fnc_eval = FunctionEvaluator(f, fnc.ast_root, inputs)
+        fnc_eval.is_sub_fun = True
+
+        #copying corresponding symbolic_dict
         for sym in fnc.symbolic_dict:
             if sym in fnc_eval.symbolic_dict:
                 fnc_eval.symbolic_dict[sym] = fnc.symbolic_dict[sym]
 
-        evres = fnc_eval.eval_symbolic();
+        fnc_eval.eval_symbolic()
+        for ass_ret in fnc_eval.ret_pct_list:
+            (ret, ass) = ass_ret
+            print "Sub_func path ", ass, " returns ", ret
+
         #add new path constraints from sub_function to fnc
-        #asdf
         fnc.pct.assert_exprs(fnc_eval.pct.assertions())
-        for res in fnc_eval.values_to_ret:
+        #for res in fnc_eval.values_to_ret:
             #continue function evaluation
 
-        #do this symbolically
-        '''
-        #TODO: lots to do here
-     #   return fnc_eval.eval_symbolic()
+        return 1000
         
     raise Exception('Unhandled expression: ' + ast.dump(expr))
 
@@ -322,27 +322,31 @@ def eval_stmt(stmt, fnc):
         #should actually be eval_expr
         fnc.return_val = eval_expr(stmt.value, fnc, False)
 
-        #add the symbolic values in symbolic_dict to the pct
-        for key in fnc.symbolic_dict:
-            #print key + " == " + fnc.symbolic_dict[key] #debug
-            #see if it's not trivial
-            if key != fnc.symbolic_dict[key]:
-                #print "Its not trivial" #debug
-                fnc.pct.add(Int(key) == fnc.symbolic_dict[key])
-
-        if (fnc.pct.check() == sat):
-            print ("Found a satisfiable stmt") #debug
-            sat_model = fnc.pct.model()
-            print sat_model #debug
-            sat_dict = {}
-            if sat_model: #see if it is not empty
-                sat_dict = model_to_dictionary(sat_model)
-
-            sat_dict = cleanup_dictionary_to_only_inputs(sat_dict, fnc)
-
-            fnc.values_to_ret.append((sat_dict, fnc.return_val)) 
+        #if it is a sub-function, just save the pct and return value accordingly, else call sat solver etc
+        if(fnc.is_sub_fun):
+            fnc.ret_pct_list.append((fnc.return_val, fnc.pct.assertions()))
         else:
-            print "This is not satisfiable"
+        #add the symbolic values in symbolic_dict to the pct
+            for key in fnc.symbolic_dict:
+                #print key + " == " + fnc.symbolic_dict[key] #debug
+                #see if it's not trivial
+                if key != fnc.symbolic_dict[key]:
+                    #print "Its not trivial" #debug
+                    fnc.pct.add(Int(key) == fnc.symbolic_dict[key])
+
+            if (fnc.pct.check() == sat):
+                print ("Found a satisfiable stmt") #debug
+                sat_model = fnc.pct.model()
+                print sat_model #debug
+                sat_dict = {}
+                if sat_model: #see if it is not empty
+                    sat_dict = model_to_dictionary(sat_model)
+
+                sat_dict = cleanup_dictionary_to_only_inputs(sat_dict, fnc)
+
+                fnc.values_to_ret.append((sat_dict, fnc.return_val)) 
+            else:
+                print "This is not satisfiable"
     
         return
     
@@ -370,6 +374,7 @@ def eval_stmt(stmt, fnc):
         #save old function stack
         stmt_save = fnc.stmts_to_eval[:]
         new_f = new_body_evaluator(fnc.f, fnc.ast_root, fnc.symbolic_dict, fnc.pct, fnc.values_to_ret)
+        new_f.is_sub_fun = fnc.is_sub_fun
         #stmts to eval changes to the if-path
         fnc.stmts_to_eval = stmt.body + fnc.stmts_to_eval
         new_f.stmts_to_eval = fnc.stmts_to_eval
@@ -381,6 +386,10 @@ def eval_stmt(stmt, fnc):
             fnc.values_to_ret.append(new_f.values_to_ret)
             #flat the list
             fnc.values_to_ret = [item for sublist in fnc.values_to_ret for item in sublist]
+
+        if new_f.ret_pct_list:
+            fnc.ret_pct_list.append(new_f.ret_pct_list)
+            fnc.ret_pct_list = [item for sublist in fnc.ret_pct_list for item in sublist]
 
         #ELSE Branch
         #negate the if stmt
@@ -510,8 +519,13 @@ class FunctionEvaluator:
         self.return_val = None
         self.ast_root = ast_root
         self.f = f
-        #new to evaluate branches
+        #to evaluate branches
         self.stmts_to_eval = self.f.body[:]
+        #needs to know if it should evaluate path constraints or just save them
+        self.is_sub_fun = False
+        #has to save current path constraints of each path taken for sub-functions
+        #pair of return value and pct
+        self.ret_pct_list = []
 
         #new
         self.pct = Solver()
