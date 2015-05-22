@@ -18,6 +18,8 @@ class SymbolicEngine:
     def explore(self):
         # Generates default input
         #unnecessary but we need to feed the function FunctionEvaluator with imput
+        global current_body;
+        current_body = BodyState([], 0)
 
         input = generate_inputs(self.fnc, {})
 
@@ -34,7 +36,13 @@ class SymbolicEngine:
 ###############
 # Interpreter #
 ###############
+class BodyState:
+    def __init__(self, body, index):
+        self.body = body
+        self.index = index
 
+#global body context, changes every time eval_body is called, index on current statement
+current_body = None
 
 #new
 # turn everything into a string, such that the expression is not run
@@ -324,7 +332,6 @@ def eval_stmt(stmt, fnc):
         fnc.return_val = eval_expr(stmt.value, fnc, False)
         print 'Return value:', eval_expr(stmt.value, fnc, False)#Debug
 
-#<<<<<<< HEAD
         #if it is a sub-function, just save the pct and return value accordingly, else call sat solver etc
         if(fnc.is_sub_fun):
             fnc.ret_pct_list.append((fnc.return_val, fnc.pct.assertions()))
@@ -349,9 +356,22 @@ def eval_stmt(stmt, fnc):
 
                 sat_dict = cleanup_dictionary_to_only_inputs(sat_dict, fnc)
 
-                real_eval = FunctionEvaluator(fnc.f, fnc.ast_root, sat_dict)
-                real_eval.eval()
-                fnc.return_val = real_eval.return_val
+                print 'Return value:', fnc.return_val
+
+                if not isinstance(fnc.return_val, int):
+                    print str(fnc.return_val) + " must be evaluated with", sat_dict
+                    #still not sure if this works properly..
+                    real_eval = FunctionEvaluator(fnc.f, fnc.ast_root, sat_dict)
+                    
+                    ret = real_eval.eval()
+                    print "Ret: " + str(ret)
+                    fnc.return_val = ret
+                    assert(isinstance(fnc.return_val, int))
+
+                print "Appending " , str(fnc.return_val)
+                print ""
+                print ""
+
                 fnc.values_to_ret.append((sat_dict, fnc.return_val)) 
             else:
                 print "This is not satisfiable"
@@ -379,18 +399,16 @@ def eval_stmt(stmt, fnc):
 
         #make a new evaluator that goes along the if stmt and further
         #save old function stack
-        stmt_save = fnc.stmts_to_eval[:]
+        stmts_copy = fnc.stmts_to_eval[:]
         new_f = new_body_evaluator(fnc.f, fnc.ast_root, fnc.symbolic_dict, fnc.pct, fnc.values_to_ret)
         new_f.is_sub_fun = fnc.is_sub_fun
         #stmts to eval changes to the if-path
-        fnc.stmts_to_eval = stmt.body + fnc.stmts_to_eval
-        new_f.stmts_to_eval = fnc.stmts_to_eval
-        eval_body(new_f.stmts_to_eval, new_f)
-
-       
+        new_f.stmts_to_eval = stmt.body + stmts_copy
+        eval_body(new_f.stmts_to_eval, new_f) 
        
         if new_f.values_to_ret:
-             fnc.values_to_ret = fnc.values_to_ret + new_f.values_to_ret
+            print "<<<< If statement returned with: ", new_f.values_to_ret, ">>>>>>>"
+            fnc.values_to_ret = fnc.values_to_ret + new_f.values_to_ret
        
         if new_f.ret_pct_list:
             fnc.ret_pct_list = fnc.ret_pct_list + new_f.ret_pct_list
@@ -402,7 +420,7 @@ def eval_stmt(stmt, fnc):
         #fix: add a flag to the eval_expr function that negates the first statement ->
         # if flag is set, turn a > to a <= and so on
         #restore stmts_to_eval first, then proceed as usual
-        fnc.stmts_to_eval = stmt_save
+        #fnc.stmts_to_eval = stmt_save
         eval_expr_result = eval_expr(stmt.test, fnc, True)
 
         print "Else condition: ", eval_expr_result
@@ -423,7 +441,7 @@ def eval_stmt(stmt, fnc):
         #</DEBUG>
 
         #go on as if nothing happenend in the if block (hopefully, haha)
-        eval_body(stmt.orelse, fnc)
+        eval_body(stmt.orelse[:], fnc)
         
         return
     
@@ -507,7 +525,12 @@ def run_body(body, fnc):
 def eval_body(body, fnc):
     #attention! eval_body now pops statements from body
     #if this is unwanted, copy list beforehands
+    #first save the body in "curent_body"
+    global current_body
+    current_body.body = body[:]
+
     for i in range(len(body)):
+        current_body.index = i
         stmt = body.pop(0)
         eval_stmt(stmt, fnc)
         if fnc.returned:
@@ -546,8 +569,13 @@ class FunctionEvaluator:
         for i in range(0, len(f.args.args)):
             self.symbolic_dict[f.args.args[i].id] = f.args.args[i].id
 
-        print "Symbolic dictionary:", 
-        print self.symbolic_dict #debug
+        print ""
+        print "--- New Evaluator ----"
+        print "Symbolic dictionary:", self.symbolic_dict #debug
+        print "States: ", self.state
+        print "Next stmt to evaluate: ", self.f.body[0]
+        print "-----------------------"
+        print ""
     
     #do not change
     def eval(self):
@@ -564,7 +592,7 @@ class FunctionEvaluator:
         assert (self.returned)
         return self.values_to_ret
 
-    def set_pct(pct, self):
+    def set_pct(self, pct):
         #clean pct to be sure 
         self.pct = Solver()
 
@@ -613,7 +641,7 @@ def cleanup_dictionary_to_only_inputs(in_dict, fnc):
             del ret_dict[k]
     for elem in input_keys:
         if elem not in ret_dict:
-            ret_dict[elem] = '0'
+            ret_dict[elem] = 0
     return ret_dict
 
 #do not change
