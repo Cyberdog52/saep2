@@ -23,6 +23,8 @@ class SymbolicEngine:
 
         input = generate_inputs(self.fnc, {})
 
+        print ""
+        print "------------Starting Evaluation-------------"
         f = FunctionEvaluator(self.fnc, self.program_ast, input)
         input_to_ret = f.eval_symbolic()
 
@@ -36,6 +38,7 @@ class SymbolicEngine:
 ###############
 # Interpreter #
 ###############
+
 class BodyState:
     def __init__(self, body, index):
         self.body = body
@@ -43,6 +46,7 @@ class BodyState:
 
 #global body context, changes every time eval_body is called, index on current statement
 current_body = None
+
 
 #new
 def eval_expr(expr, fnc, negate):
@@ -322,10 +326,16 @@ def run_stmt(stmt, fnc):
 #new
 def eval_stmt(stmt, fnc):
     if type(stmt) == ast.Return:
+        #if fnc.parents_of_all_children:
+        fnc.returned = True
         #should actually be eval_expr
         #TODO:Here is a problem
         fnc.return_val = eval_expr(stmt.value, fnc, False)
+        print ""
+        print ""
+        print 'Return value:', fnc.return_val #Debug
 
+#<<<<<<< HEAD
         #if it is a sub-function, just save the pct and return value accordingly, else call sat solver etc
         if(fnc.is_sub_fun):
             fnc.ret_pct_list.append((fnc.return_val, fnc.pct.assertions()))
@@ -343,6 +353,7 @@ def eval_stmt(stmt, fnc):
             if (fnc.pct.check() == sat):
                 print ("Found a satisfiable stmt") #debug
                 sat_model = fnc.pct.model()
+                print "Satisfying model:", sat_model #debug
                 sat_dict = {}
                 if sat_model: #see if it is not empty
                     sat_dict = model_to_dictionary(sat_model)
@@ -351,7 +362,16 @@ def eval_stmt(stmt, fnc):
 
                 print 'Return value:', fnc.return_val
 
+                #if not isinstance(fnc.return_val, int):
+
+                print str(fnc.return_val) + " must be evaluated with", sat_dict
+                        #still not sure if this works properly..
+                real_eval = FunctionEvaluator(fnc.f, fnc.ast_root, sat_dict)
                     
+                ret = real_eval.eval()
+                print "Ret: " + str(ret)
+                fnc.return_val = ret
+                assert(isinstance(fnc.return_val, int))
 
                 print "Appending " , str(fnc.return_val)
                 print ""
@@ -386,11 +406,16 @@ def eval_stmt(stmt, fnc):
         stmts_copy = fnc.stmts_to_eval[:]
         new_f = new_body_evaluator(fnc.f, fnc.ast_root, fnc.symbolic_dict, fnc.pct, fnc.values_to_ret)
         new_f.is_sub_fun = fnc.is_sub_fun
+         #stmts to eval changes to the if-path
         new_f.stmts_to_eval = stmt.body + stmts_copy
+        eval_body(new_f.stmts_to_eval, new_f)
+
+       
        
         if new_f.values_to_ret:
             print "<<<< If statement returned with: ", new_f.values_to_ret, ">>>>>>>"
             fnc.values_to_ret = fnc.values_to_ret + new_f.values_to_ret
+          
        
         if new_f.ret_pct_list:
             fnc.ret_pct_list = fnc.ret_pct_list + new_f.ret_pct_list
@@ -403,6 +428,7 @@ def eval_stmt(stmt, fnc):
         # if flag is set, turn a > to a <= and so on
         #restore stmts_to_eval first, then proceed as usual
         #fnc.stmts_to_eval = stmt_save
+        
         eval_expr_result = eval_expr(stmt.test, fnc, True)
 
         print "Else condition: ", eval_expr_result
@@ -423,6 +449,7 @@ def eval_stmt(stmt, fnc):
         #</DEBUG>
 
         #go on as if nothing happenend in the if block (hopefully, haha)
+        eval_body(stmt.orelse [:], fnc)
         
         return
     
