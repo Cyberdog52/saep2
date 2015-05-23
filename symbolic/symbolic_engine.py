@@ -691,6 +691,6 @@ def model_to_dictionary(model):
     new_list = []
     for stmt in stmts:
         new_list.append("".join([char for char in stmt if (char not in [' ', '[', ']'])]))
-    return {k:(Int(v)) for k,v in (x.split('=') for x in new_list) }
+    return {k:(int(v)) for k,v in (x.split('=') for x in new_list) }
 
 
