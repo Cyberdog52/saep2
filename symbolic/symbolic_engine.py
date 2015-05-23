@@ -25,11 +25,13 @@ class SymbolicEngine:
 
         print ""
         print "------------Starting Evaluation-------------"
+
+        assertion_violations_to_input = {}
         f = FunctionEvaluator(self.fnc, self.program_ast, input)
-        input_to_ret = f.eval_symbolic()
+        input_to_ret, assertion_violations_to_input = f.eval_symbolic()
 
         print input_to_ret #debug
-        assertion_violations_to_input = {}
+        
         
         #right now, input_to_ret has dictionaries where there value is in string format
         #that's why this throws an exception, because it expects an int
@@ -185,6 +187,7 @@ def eval_expr(expr, fnc, negate):
                 if sym in fnc_eval.symbolic_dict:
                     fnc_eval.symbolic_dict[sym] = fnc.symbolic_dict[sym]
 
+            #eval_symbolic returns a tuple of return values, why dont you use it?
             fnc_eval.eval_symbolic()
             # create fnc copy 
             for i in range(len(fnc_eval.ret_pct_list) - 1):
@@ -203,7 +206,16 @@ def eval_expr(expr, fnc, negate):
                 #putting return value in lut
                 new_f.lut[expr.func.id] = ret
                 print "new eval with lut ", new_f.lut, "and pct ", new_f.pct.assertions()
-                new_f.eval_symbolic()
+                
+                #eval_symbolic returns a tuple of return values, why dont you use it?
+                vtr_dict = {}
+                ati_dict = {}
+                vtr_dict, ati_dict = new_f.eval_symbolic()
+
+                #add the new found assertions to the current function
+                if new_f.assertion_violation_dict:
+                    fnc.assertion_violation_dict.update(new_f.assertion_violation_dict)
+
                 #add results to current function
                 if new_f.values_to_ret:
                     print "sub_fun 1 path returns: ", new_f.values_to_ret
@@ -453,8 +465,11 @@ def eval_stmt(stmt, fnc):
         if new_f.values_to_ret:
             print "<<<< If statement returned with: ", new_f.values_to_ret, ">>>>>>>"
             fnc.values_to_ret = fnc.values_to_ret + new_f.values_to_ret
+
+        #add the new_f dictionary of assertions to fnc
+        if new_f.assertion_violation_dict:
+            fnc.assertion_violation_dict.update(new.assertion_violation_dict)
           
-       
         if new_f.ret_pct_list:
             fnc.ret_pct_list = fnc.ret_pct_list + new_f.ret_pct_list
        
@@ -545,6 +560,7 @@ def eval_stmt(stmt, fnc):
             #clean the model of all variables that are not inputs
             assertion_dict = cleanup_dictionary_to_only_inputs(assertion_dict, fnc)
             
+            #adding the assertion dictionary pair to the assertion_violation_dict
             fnc.assertion_violation_dict[stmt] = assertion_dict
 
             print "Assertion dict of violations so far:"
@@ -657,7 +673,7 @@ class FunctionEvaluator:
         eval_stmts_to_eval(self)
 
         assert (self.returned)
-        return self.values_to_ret
+        return (self.values_to_ret, self.assertion_violation_dict)
 
     def set_pct(self, pct):
         #clean pct to be sure 
