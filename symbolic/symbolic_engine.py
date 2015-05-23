@@ -161,37 +161,66 @@ def eval_expr(expr, fnc, negate):
                 r = Or (r ,eval_expr(v, fnc, False))
             return r
 
-    #TODO:
-    # lots to do here!
     if type(expr) == ast.Call:
-        f = find_function(fnc.ast_root, expr.func.id)
+        if expr.func.id in fnc.lut:
+            value = fnc.lut[expr.func.id]
+            del fnc.lut[expr.func.id]
+            print "returning looked-up value for ", expr.func.id, ": ", value
+            return Int(str(value))
+        else:
+            f = find_function(fnc.ast_root, expr.func.id)
+                
+            inputs = {}
+            assert (len(expr.args) == len(f.args.args))
+            # Evaluates all function arguments
+            for i in range(0, len(expr.args)):
+                inputs[f.args.args[i].id] = run_expr(expr.args[i], fnc)
             
-        inputs = {}
-        assert (len(expr.args) == len(f.args.args))
-        # Evaluates all function arguments
-        for i in range(0, len(expr.args)):
-            inputs[f.args.args[i].id] = run_expr(expr.args[i], fnc)
-        
-        #creating new context  
-        fnc_eval = FunctionEvaluator(f, fnc.ast_root, inputs)
-        fnc_eval.is_sub_fun = True
+            #creating new context  
+            fnc_eval = FunctionEvaluator(f, fnc.ast_root, inputs)
+            fnc_eval.is_sub_fun = True
 
-        #copying corresponding symbolic_dict
-        for sym in fnc.symbolic_dict:
-            if sym in fnc_eval.symbolic_dict:
-                fnc_eval.symbolic_dict[sym] = fnc.symbolic_dict[sym]
+            #copying corresponding symbolic_dict
+            for sym in fnc.symbolic_dict:
+                if sym in fnc_eval.symbolic_dict:
+                    fnc_eval.symbolic_dict[sym] = fnc.symbolic_dict[sym]
 
-        fnc_eval.eval_symbolic()
-        for ass_ret in fnc_eval.ret_pct_list:
+            fnc_eval.eval_symbolic()
+            # create fnc copy 
+            for i in range(len(fnc_eval.ret_pct_list) - 1):
+                ass_ret = fnc_eval.ret_pct_list[i]
+                (ret, ass) = ass_ret
+                print "Sub_func path ", ass, " returns ", ret
+                new_f = new_body_evaluator(fnc.f, fnc.ast_root, fnc.symbolic_dict, fnc.pct, fnc.values_to_ret)
+                new_f.is_sub_fun = fnc.is_sub_fun
+                new_f.stmts_to_eval = fnc.stmts_to_eval[:]
+                new_f.ret_pct_list = fnc.ret_pct_list[:]
+                #new_f.assertion_violation_dict = fnc.assertion_violation_dict[:]
+                #change stmts_to_eval, lut and pct, then execute last statement again
+                new_f.stmts_to_eval.insert(0, fnc.current_stmt)
+                #adding path constraints of sub-function
+                new_f.pct.assert_exprs(ass)
+                #putting return value in lut
+                new_f.lut[expr.func.id] = ret
+                print "new eval with lut ", new_f.lut, "and pct ", new_f.pct.assertions()
+                new_f.eval_symbolic()
+                #add results to current function
+                if new_f.values_to_ret:
+                    print "sub_fun 1 path returns: ", new_f.values_to_ret
+                    fnc.values_to_ret = fnc.values_to_ret + new_f.values_to_ret
+          
+                if new_f.ret_pct_list:
+                    print "sub_fun in sub_fun? 1 path returns: ", new_f.ret_pct_list
+                    fnc.ret_pct_list = fnc.ret_pct_list + new_f.ret_pct_list
+
+            #same for last path:
+            ass_ret = fnc_eval.ret_pct_list[len(fnc_eval.ret_pct_list) - 1]
             (ret, ass) = ass_ret
-            print "Sub_func path ", ass, " returns ", ret
+            #adding path constraints of sub-function
+            fnc.pct.assert_exprs(ass)
+            print "new main eval return: ", ret, "and pct ", fnc.pct.assertions()
 
-        #add new path constraints from sub_function to fnc
-        fnc.pct.assert_exprs(fnc_eval.pct.assertions())
-        #for res in fnc_eval.values_to_ret:
-            #continue function evaluation
-
-        return 1000
+            return Int(str(ret))
         
     raise Exception('Unhandled expression: ' + ast.dump(expr))
 
@@ -563,6 +592,7 @@ def eval_stmts_to_eval(fnc):
     while len(fnc.stmts_to_eval) > 0: 
         #current_body.index = i
         stmt = fnc.stmts_to_eval.pop(0)
+        fnc.current_stmt = stmt
         eval_stmt(stmt, fnc)
         if fnc.returned:
             return
@@ -586,6 +616,8 @@ class FunctionEvaluator:
         #has to save current path constraints of each path taken for sub-functions
         #pair of return value and pct
         self.ret_pct_list = []
+        #currently executing statement
+        self.current_stmt = None
 
         #new
         self.pct = Solver()
@@ -596,6 +628,9 @@ class FunctionEvaluator:
 
         #make symbolic dictonary that has as key 'x' and as value '3' or '5/5 + y' (strings!)
         self.symbolic_dict = {}
+
+        #lookup table for function values
+        self.lut = {}
 
         for i in range(0, len(f.args.args)):
             self.symbolic_dict[f.args.args[i].id] = f.args.args[i].id
@@ -650,13 +685,12 @@ def generate_inputs(f, custom_inputs):
     return inputs
 
 #new
-def new_body_evaluator(fnc, ast, symbolic_dict, pct, values_to_ret):
-    new_input = generate_inputs(fnc, {})
-    new_f = FunctionEvaluator(fnc, ast, new_input)
+def new_body_evaluator(f, ast, symbolic_dict, pct, values_to_ret):
+    new_input = generate_inputs(f, {})
+    new_f = FunctionEvaluator(f, ast, new_input)
     new_f.symbolic_dict = symbolic_dict.copy()
     new_f.pct = Solver()
     new_f.pct.assert_exprs(pct.assertions())
-    print "new FE pct: ", new_f.pct.assertions()
     new_f.values_to_ret = values_to_ret [:]
     new_f.parents_of_all_children = False
     return new_f
