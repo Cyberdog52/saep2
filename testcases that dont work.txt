@@ -8,11 +8,10 @@ bool_cast.py
 
 from hallo-group
 
-bool_cast4.py
+bool_cast4.py (instance * instance)
 bool_function1.py (endless)
 test2.py (endless)
-test3.py 
-test5.py
-todo_bool_cast2.py
-todo_bool_function2.py 
+test3.py (endless)
+test5.py (endless)	
+todo_bool_cast2.py (int + instance)
 

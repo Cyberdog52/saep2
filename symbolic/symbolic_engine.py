@@ -78,6 +78,8 @@ def eval_expr(expr, fnc, negate):
 
     if type(expr) == ast.BinOp:
         if type(expr.op) == ast.Add:
+            print "+ Left: ", type(eval_expr(expr.left, fnc, negate))
+            print "+ Right: ", type(eval_expr(expr.right, fnc, negate))
             return eval_expr(expr.left, fnc, negate) + eval_expr(expr.right, fnc, negate )
         if type(expr.op) == ast.Sub:
             return  eval_expr(expr.left, fnc, negate) - eval_expr(expr.right, fnc, negate)
@@ -110,11 +112,12 @@ def eval_expr(expr, fnc, negate):
     if type(expr) == ast.Compare:
         assert (len(expr.ops) == 1)  # Do not allow for x==y==0 syntax
         assert (len(expr.comparators) == 1)
+        print "Going to evaluate a compare Statement", type(expr.ops[0])
         e1 = eval_expr(expr.left, fnc, False)
         op = expr.ops[0]
         e2 = eval_expr(expr.comparators[0], fnc, False)
         if type(op) == ast.Eq:
-            #print "Evaluating", str(e1) +'==' + str(e2) #Debug
+            print "Evaluating", str(e1) +'==' + str(e2) #Debug
             if negate:
                 return e1 != e2
             else:
@@ -135,7 +138,7 @@ def eval_expr(expr, fnc, negate):
             else: 
                 return e1 >= e2 
         if type(op) == ast.Lt:
-            #print "Evaluating", str(e1) +'<' + str(e2) #Debug
+            print "Evaluating", str(e1) +'<' + str(e2) #Debug
             if negate:
                 return e1 >= e2
             else: 
@@ -251,7 +254,7 @@ def run_expr(expr, fnc):
             return 1
         elif expr.id == 'False':
             return 0
-            
+
         #print ""
         #print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
         #print ""
@@ -448,7 +451,11 @@ def eval_stmt(stmt, fnc):
         save_pct.assert_exprs(fnc.pct.assertions())
 
         #add it to the pct
-
+        if isinstance(eval_expr_result, int):
+            if (eval_expr_result == 0):
+                eval_expr_result = False
+            else:
+                eval_expr_result = True
         fnc.pct.add(eval_expr_result)
 
         print 'pct:', fnc.pct
@@ -475,7 +482,7 @@ def eval_stmt(stmt, fnc):
 
         #add the new_f dictionary of assertions to fnc
         if new_f.assertion_violation_dict:
-            fnc.assertion_violation_dict.update(new.assertion_violation_dict)
+            fnc.assertion_violation_dict.update(new_f.assertion_violation_dict)
           
         if new_f.ret_pct_list:
             fnc.ret_pct_list = fnc.ret_pct_list + new_f.ret_pct_list
@@ -490,6 +497,11 @@ def eval_stmt(stmt, fnc):
         #fnc.stmts_to_eval = stmt_save
         
         eval_expr_result = eval_expr(stmt.test, fnc, True)
+        if isinstance(eval_expr_result, int):
+            if (eval_expr_result == 0):
+                eval_expr_result = False
+            else:
+                eval_expr_result = True
 
         print "Else condition: ", eval_expr_result
 
@@ -730,10 +742,10 @@ def new_body_evaluator(f, ast, symbolic_dict, pct, values_to_ret):
 
 def check_return(arg):
     if isinstance (arg, str):
-        print "transfroming a string", arg
+       # print "transfroming a string", arg
         return Int(arg)
     else:
-        print "Type: ", type(arg)
+       # print "Type: ", type(arg)
         return arg
 
 #new

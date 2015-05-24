@@ -1,9 +1,7 @@
 def main(x):
 	assert(False)
 	if (x>10):
-
-		return 1;
-
+		return 1
 	else:
 		return 2
 
