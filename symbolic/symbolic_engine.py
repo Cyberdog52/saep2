@@ -102,8 +102,8 @@ def eval_expr(expr, fnc, negate):
                 return eval_expr(expr.operand, fnc, False)
             else:
                 return Not( eval_expr(expr.operand, fnc, False))
-           # if type(expr.op) == ast.USub:
-            #    return - eval_expr(expr.operand, fnc) 
+        if type(expr.op) == ast.USub:
+            return - eval_expr(expr.operand, fnc, negate) 
 
     if type(expr) == ast.Compare:
         assert (len(expr.ops) == 1)  # Do not allow for x==y==0 syntax
@@ -176,7 +176,7 @@ def eval_expr(expr, fnc, negate):
             inputs = {}
             assert (len(expr.args) == len(f.args.args))
             # Evaluates all function arguments
-            print "Expression ", expr.func.id, [e.id for e in expr.args], [a.id for a in f.args.args]
+            #print "Expression ", expr.func.id, [e.id for e in expr.args], [a.id for a in f.args.args]
             for i in range(0, len(expr.args)):
                 inputs[f.args.args[i].id] = eval_expr(expr.args[i], fnc, negate)
             
@@ -285,8 +285,8 @@ def run_expr(expr, fnc):
     if type(expr) == ast.UnaryOp:
         if type(expr.op) == ast.Not:
             return not run_expr(expr.operand, fnc)
-            if type(expr.op) == ast.USub:
-                return -run_expr(expr.operand, fnc)
+        if type(expr.op) == ast.USub:
+            return -run_expr(expr.operand, fnc)
 
     if type(expr) == ast.Compare:
         assert (len(expr.ops) == 1)  # Do not allow for x==y==0 syntax

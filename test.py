@@ -1,7 +1,15 @@
-'''
+def abs(v):
+    if v >= 0:
+        return v
+    else:
+        return -1 * v
+
 def main(x):
-	return 5
-'''
+    if (abs(x) == abs(-x)):
+    	return True
+    else:
+    	return False
+
 '''
 def g(x):
 	if (x < 0):
@@ -13,7 +21,7 @@ def main(x,y):
 	return g(x) + 1
 
 '''
-#'''
+'''
 def test(x, y):
     if (x != 0):
         return 1
@@ -27,7 +35,7 @@ def main(x, y):
 
 def expected_result():
     return [0, 1]
-#'''
+'''
 '''
 def main(x, y):
 	#y=3
@@ -44,17 +52,4 @@ def main(x, y):
 		return 8
 
 	return x
-'''
-'''
-
-# def twice(v): 
-# 	return v + v
-# def main(x, y): 
-# 	z = twice(y) 
-# 	if (x == z):
-# 		if (x > y + 10): 
-# 			return -1
-# 		return 1 
-# 	return 0
-
 '''
