@@ -22,3 +22,4 @@ def main (x,y):
 def expected_result():
   return [1,2,3,4,0]
 	
+print main(0,0)

@@ -14,5 +14,5 @@ def f(x):
 def g(x):
     return False
 
-def h():
+def h(x):
     return True
