@@ -5,3 +5,6 @@ def main(x):
         return 1
     else: 
         return 3
+
+def expected_result():
+    return [1,2,3]

@@ -1,9 +1,9 @@
 testcases that dont work:
 
 abs.py (endless because function call in assertion)
-boolean_function (too few arguments)
+boolean_function (too few return values)
 hard_function_chain (endless)
-local_boolean.py (z3 error)
+local_boolean.py (too few return values)
 gxgx (endless)
 
 

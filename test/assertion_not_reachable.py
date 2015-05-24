@@ -6,5 +6,5 @@ def main(x):
         return 0
 
 
-def expected_results():
+def expected_result():
     return [1]
