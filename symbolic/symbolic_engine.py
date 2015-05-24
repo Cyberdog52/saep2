@@ -539,6 +539,10 @@ def eval_stmt(stmt, fnc):
         current_pct = Solver()
         current_pct.assert_exprs(fnc.pct.assertions())
 
+        print ""
+        print "////// Assertion ////////"
+        print "pct before assertion", fnc.pct
+        print "dict before assertion", fnc.symbolic_dict
 
         #evaluate this with eval_expr flag set to TRUE -> negate assertion
         # if its satisfiable, we have a model that violates the original assertion
@@ -553,6 +557,8 @@ def eval_stmt(stmt, fnc):
             
             assertion_model = fnc.pct.model()
 
+            print "Model: ", assertion_model
+
             assertion_dict = model_to_dictionary(assertion_model)
             
             #clean the model of all variables that are not inputs
@@ -561,8 +567,7 @@ def eval_stmt(stmt, fnc):
             #adding the assertion dictionary pair to the assertion_violation_dict
             fnc.assertion_violation_dict[stmt] = assertion_dict
 
-            print "Assertion dict of violations so far:"
-            print fnc.assertion_violation_dict
+            print "Assertion dict of violations so far:", fnc.assertion_violation_dict
 
             #send the model to the parent if this is not the parent
             #assertion_violations_to_input needs to have the correct variables
@@ -570,6 +575,8 @@ def eval_stmt(stmt, fnc):
         else:
             print "----------- True Assertion ---------------"
 
+        print "/////// end assertion /////////"
+        print ""
         #set the pct back to before the assertion, because the assertion should not influence our pct
         fnc.pct = Solver()
         fnc.pct.assert_exprs(current_pct.assertions())
