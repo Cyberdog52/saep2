@@ -166,10 +166,10 @@ def eval_expr(expr, fnc, negate):
             return r
 
     if type(expr) == ast.Call:
-        if expr.func.id in fnc.lut:
-            value = fnc.lut[expr.func.id]
-            del fnc.lut[expr.func.id]
-            print "returning looked-up value for ", expr.func.id, ": ", value
+        if fnc.lut_index in fnc.lut:
+            value = fnc.lut[fnc.lut_index]
+            fnc.lut_index += 1
+            print "returning looked-up value for ", expr.func.id, " lut_index ", fnc.lut_index, "lut", fnc.lut, " : ", value
             return check_return(value)
         else:
             f = find_function(fnc.ast_root, expr.func.id)
@@ -191,6 +191,8 @@ def eval_expr(expr, fnc, negate):
 
             #eval_symbolic returns a tuple of return values, why dont you use it?
             fnc_eval.eval_symbolic()
+            # highest_lut_index is the currenty higherst index
+            highest_lut_index = fnc.lut_index
             # create fnc copy 
             for i in range(len(fnc_eval.ret_pct_list) - 1):
                 ass_ret = fnc_eval.ret_pct_list[i]
@@ -206,8 +208,9 @@ def eval_expr(expr, fnc, negate):
                 #adding path constraints of sub-function
                 new_f.pct.assert_exprs(ass)
                 #putting return value in lut
-                new_f.lut[expr.func.id] = ret
-                print "new eval with lut ", new_f.lut, "and pct ", new_f.pct.assertions()
+                new_f.lut = fnc.lut.copy()
+                new_f.lut[fnc.lut_index] = ret
+                print "new eval with lut ", new_f.lut, "lut index", new_f.lut_index, "and pct ", new_f.pct.assertions()
                 
                 #eval_symbolic returns a tuple of return values, why dont you use it?
                 vtr_dict = {}
@@ -227,6 +230,9 @@ def eval_expr(expr, fnc, negate):
                     print "sub_fun in sub_fun? 1 path returns: ", new_f.ret_pct_list
                     fnc.ret_pct_list = fnc.ret_pct_list + new_f.ret_pct_list
 
+                highest_lut_index = new_f.lut_index_return
+                print "after subpath return current_lut_index is ", highest_lut_index
+
             #same for last path:
             ass_ret = fnc_eval.ret_pct_list[len(fnc_eval.ret_pct_list) - 1]
             (ret, ass) = ass_ret
@@ -234,6 +240,7 @@ def eval_expr(expr, fnc, negate):
             fnc.pct.assert_exprs(ass)
             print "new main eval return: ", ret, "and pct ", fnc.pct.assertions()
 
+            fnc.lut_index_return = highest_lut_index
             return check_return(ret)
         
     raise Exception('Unhandled expression: ' + ast.dump(expr))
@@ -475,7 +482,7 @@ def eval_stmt(stmt, fnc):
 
         #add the new_f dictionary of assertions to fnc
         if new_f.assertion_violation_dict:
-            fnc.assertion_violation_dict.update(new.assertion_violation_dict)
+            fnc.assertion_violation_dict.update(new_f.assertion_violation_dict)
           
         if new_f.ret_pct_list:
             fnc.ret_pct_list = fnc.ret_pct_list + new_f.ret_pct_list
@@ -664,6 +671,10 @@ class FunctionEvaluator:
 
         #lookup table for function values
         self.lut = {}
+        #first called function has lut_index 0, second 1 etc. This should be "global" for one statement
+        self.lut_index = 0
+        #which lut_index did the last functino call (= real return) return?
+        self.lut_index_return = 0
 
         for i in range(0, len(f.args.args)):
             self.symbolic_dict[f.args.args[i].id] = f.args.args[i].id
