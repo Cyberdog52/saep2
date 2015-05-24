@@ -5,11 +5,6 @@ boolean_function (z3 error)
 hard_function_chain (endless)
 ififif.py (too less return values, we need ‚2‘)
 local_boolean.py (z3 error)
-non_linear (wrong return values)
-simple_if (too few return values)
 tuple_of_tuple_simple (dont care, we dont have to implement tuples)
 tuple_of_tuple_hard (dont care, we dont have to implement tuples)
 
-assertion1
-assertion2
-assertion5

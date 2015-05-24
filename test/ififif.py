@@ -11,4 +11,5 @@ def main(x):
 	return x
 
 def expected_results():
-	return [2, 1, 5]
+	return [2, 1, 5, 4]
+

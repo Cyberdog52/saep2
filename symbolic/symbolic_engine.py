@@ -61,15 +61,16 @@ def eval_expr(expr, fnc, negate):
     if type(expr) == ast.Name:
         if expr.id == 'True':
             if negate:
-                return Int(0)
+                return 0
             else: 
-                return Int(1)
+                return 1
         elif expr.id == 'False':
             if negate:
-                return Int(1)
+                return 1
             else: 
-                return Int(0)
-        return Int(str(fnc.symbolic_dict[expr.id]))
+                return 0
+        return check_return(fnc.symbolic_dict[expr.id])
+
     
     if type(expr) == ast.Num:
         assert (isinstance(expr.n, numbers.Integral))
@@ -168,7 +169,7 @@ def eval_expr(expr, fnc, negate):
             value = fnc.lut[expr.func.id]
             del fnc.lut[expr.func.id]
             print "returning looked-up value for ", expr.func.id, ": ", value
-            return Int(str(value))
+            return check_return(value)
         else:
             f = find_function(fnc.ast_root, expr.func.id)
             
@@ -232,7 +233,7 @@ def eval_expr(expr, fnc, negate):
             fnc.pct.assert_exprs(ass)
             print "new main eval return: ", ret, "and pct ", fnc.pct.assertions()
 
-            return Int(str(ret))
+            return check_return(ret)
         
     raise Exception('Unhandled expression: ' + ast.dump(expr))
 
@@ -249,13 +250,13 @@ def run_expr(expr, fnc):
             return 1
         elif expr.id == 'False':
             return 0
-
+            """
         print ""
         print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
         print ""
         print "Checking states"
         print "returning " + str(expr.id) + " with value " + str(fnc.state[expr.id])
-
+"""
         return fnc.state[expr.id]
     
     if type(expr) == ast.Num:
@@ -432,6 +433,7 @@ def eval_stmt(stmt, fnc):
         return
     
     if type(stmt) == ast.If:
+        print "Evaluating :", stmt.test
         eval_expr_result = eval_expr(stmt.test, fnc, False)
         print 'Condition:', eval_expr_result
 
@@ -440,6 +442,7 @@ def eval_stmt(stmt, fnc):
         save_pct.assert_exprs(fnc.pct.assertions())
 
         #add it to the pct
+
         fnc.pct.add(eval_expr_result)
 
         print 'pct:', fnc.pct
@@ -559,7 +562,10 @@ def eval_stmt(stmt, fnc):
 
             print "Model: ", assertion_model
 
-            assertion_dict = model_to_dictionary(assertion_model)
+            if assertion_model:
+                assertion_dict = model_to_dictionary(assertion_model)
+            else:
+                assertion_dict = {}
             
             #clean the model of all variables that are not inputs
             assertion_dict = cleanup_dictionary_to_only_inputs(assertion_dict, fnc)
@@ -715,6 +721,14 @@ def new_body_evaluator(f, ast, symbolic_dict, pct, values_to_ret):
     new_f.values_to_ret = values_to_ret [:]
     new_f.parents_of_all_children = False
     return new_f
+
+def check_return(arg):
+    if isinstance (arg, str):
+        print "transfroming a string", arg
+        return Int(arg)
+    else:
+        print "Type: ", type(arg)
+        return arg
 
 #new
 def cleanup_dictionary_to_only_inputs(in_dict, fnc):
