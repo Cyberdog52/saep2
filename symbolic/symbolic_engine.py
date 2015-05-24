@@ -169,21 +169,21 @@ def eval_expr(expr, fnc, negate):
             return Int(str(value))
         else:
             f = find_function(fnc.ast_root, expr.func.id)
-                
+            
+            #error here: inputs not used, but also wrong symbolic dict copying   
             inputs = {}
             assert (len(expr.args) == len(f.args.args))
             # Evaluates all function arguments
+            print "Expression ", expr.func.id, [e.id for e in expr.args], [a.id for a in f.args.args]
             for i in range(0, len(expr.args)):
-                inputs[f.args.args[i].id] = run_expr(expr.args[i], fnc)
+                inputs[f.args.args[i].id] = eval_expr(expr.args[i], fnc, negate)
             
             #creating new context  
             fnc_eval = FunctionEvaluator(f, fnc.ast_root, inputs)
             fnc_eval.is_sub_fun = True
-
-            #copying corresponding symbolic_dict
-            for sym in fnc.symbolic_dict:
-                if sym in fnc_eval.symbolic_dict:
-                    fnc_eval.symbolic_dict[sym] = fnc.symbolic_dict[sym]
+            #make the input values symbolic dict
+            fnc_eval.symbolic_dict = fnc_eval.state
+            
 
             fnc_eval.eval_symbolic()
             # create fnc copy 
@@ -420,10 +420,8 @@ def eval_stmt(stmt, fnc):
         return
     
     if type(stmt) == ast.If:
-        cond = eval_expr(stmt.test, fnc, False)
-        print 'Condition:', (cond)
-
         eval_expr_result = eval_expr(stmt.test, fnc, False)
+        print 'Condition:', eval_expr_result
 
         #save the pct
         save_pct = Solver()
