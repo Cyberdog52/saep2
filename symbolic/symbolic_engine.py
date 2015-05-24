@@ -23,14 +23,14 @@ class SymbolicEngine:
 
         input = generate_inputs(self.fnc, {})
 
-        print ""
-        print "------------Starting Evaluation-------------"
+        #print ""
+        #print "------------Starting Evaluation-------------"
 
         assertion_violations_to_input = {}
         f = FunctionEvaluator(self.fnc, self.program_ast, input)
         input_to_ret, assertion_violations_to_input = f.eval_symbolic()
 
-        print input_to_ret #debug
+        #print input_to_ret #debug
         
         
         #right now, input_to_ret has dictionaries where there value is in string format
@@ -78,8 +78,9 @@ def eval_expr(expr, fnc, negate):
 
     if type(expr) == ast.BinOp:
         if type(expr.op) == ast.Add:
-            #print "+ Left: ", type(eval_expr(expr.left, fnc, negate))
-            #print "+ Right: ", type(eval_expr(expr.right, fnc, negate))
+            #DO NOT COMMENT IN AGAIN!!!!!
+            ##print "+ Left: ", type(eval_expr(expr.left, fnc, negate))
+            ##print "+ Right: ", type(eval_expr(expr.right, fnc, negate))
             return eval_expr(expr.left, fnc, negate) + eval_expr(expr.right, fnc, negate )
         if type(expr.op) == ast.Sub:
             return  eval_expr(expr.left, fnc, negate) - eval_expr(expr.right, fnc, negate)
@@ -112,12 +113,12 @@ def eval_expr(expr, fnc, negate):
     if type(expr) == ast.Compare:
         assert (len(expr.ops) == 1)  # Do not allow for x==y==0 syntax
         assert (len(expr.comparators) == 1)
-        print "Going to evaluate a compare Statement", type(expr.ops[0])
+        ##print "Going to evaluate a compare Statement", type(expr.ops[0])
         e1 = eval_expr(expr.left, fnc, False)
         op = expr.ops[0]
         e2 = eval_expr(expr.comparators[0], fnc, False)
         if type(op) == ast.Eq:
-            print "Evaluating", str(e1) +'==' + str(e2) #Debug
+            ##print "Evaluating", str(e1) +'==' + str(e2) #Debug
             if negate:
                 return e1 != e2
             else:
@@ -138,7 +139,7 @@ def eval_expr(expr, fnc, negate):
             else: 
                 return e1 >= e2 
         if type(op) == ast.Lt:
-            print "Evaluating", str(e1) +'<' + str(e2) #Debug
+            #print "Evaluating", str(e1) +'<' + str(e2) #Debug
             if negate:
                 return e1 >= e2
             else: 
@@ -172,7 +173,7 @@ def eval_expr(expr, fnc, negate):
         if fnc.lut_index in fnc.lut:
             value = fnc.lut[fnc.lut_index]
             fnc.lut_index += 1
-            print "returning looked-up value for ", expr.func.id, " lut_index ", fnc.lut_index, "lut", fnc.lut, " : ", value
+            #print "returning looked-up value for ", expr.func.id, " lut_index ", fnc.lut_index, "lut", fnc.lut, " : ", value
             return check_return(value)
         else:
             f = find_function(fnc.ast_root, expr.func.id)
@@ -181,7 +182,7 @@ def eval_expr(expr, fnc, negate):
             inputs = {}
             assert (len(expr.args) == len(f.args.args))
             # Evaluates all function arguments
-            #print "Expression ", expr.func.id, [e.id for e in expr.args], [a.id for a in f.args.args]
+            ##print "Expression ", expr.func.id, [e.id for e in expr.args], [a.id for a in f.args.args]
             for i in range(0, len(expr.args)):
                 inputs[f.args.args[i].id] = eval_expr(expr.args[i], fnc, negate)
             
@@ -200,7 +201,7 @@ def eval_expr(expr, fnc, negate):
             for i in range(len(fnc_eval.ret_pct_list) - 1):
                 ass_ret = fnc_eval.ret_pct_list[i]
                 (ret, ass) = ass_ret
-                print "Sub_func path ", ass, " returns ", ret
+                #print "Sub_func path ", ass, " returns ", ret
                 new_f = new_body_evaluator(fnc.f, fnc.ast_root, fnc.symbolic_dict, fnc.pct, fnc.values_to_ret)
                 new_f.is_sub_fun = fnc.is_sub_fun
                 new_f.stmts_to_eval = fnc.stmts_to_eval[:]
@@ -213,7 +214,7 @@ def eval_expr(expr, fnc, negate):
                 #putting return value in lut
                 new_f.lut = fnc.lut.copy()
                 new_f.lut[fnc.lut_index] = ret
-                print "new eval with lut ", new_f.lut, "lut index", new_f.lut_index, "and pct ", new_f.pct.assertions()
+                #print "new eval with lut ", new_f.lut, "lut index", new_f.lut_index, "and pct ", new_f.pct.assertions()
                 
                 #eval_symbolic returns a tuple of return values, why dont you use it?
                 vtr_dict = {}
@@ -226,24 +227,25 @@ def eval_expr(expr, fnc, negate):
 
                 #add results to current function
                 if new_f.values_to_ret:
-                    print "sub_fun 1 path returns: ", new_f.values_to_ret
+                    #print "sub_fun 1 path returns: ", new_f.values_to_ret
                     fnc.values_to_ret = fnc.values_to_ret + new_f.values_to_ret
           
                 if new_f.ret_pct_list:
-                    print "sub_fun in sub_fun? 1 path returns: ", new_f.ret_pct_list
+                    ##print "sub_fun in sub_fun? 1 path returns: ", new_f.ret_pct_list
                     fnc.ret_pct_list = fnc.ret_pct_list + new_f.ret_pct_list
 
                 highest_lut_index = new_f.lut_index_return
-                print "after subpath return current_lut_index is ", highest_lut_index
+                ##print "after subpath return current_lut_index is ", highest_lut_index
 
             #same for last path:
             ass_ret = fnc_eval.ret_pct_list[len(fnc_eval.ret_pct_list) - 1]
             (ret, ass) = ass_ret
             #adding path constraints of sub-function
             fnc.pct.assert_exprs(ass)
-            print "new main eval return: ", ret, "and pct ", fnc.pct.assertions()
+            ##print "new main eval return: ", ret, "and pct ", fnc.pct.assertions()
 
             fnc.lut_index_return = highest_lut_index
+            fnc.lut = {}
             return check_return(ret)
         
     raise Exception('Unhandled expression: ' + ast.dump(expr))
@@ -262,11 +264,11 @@ def run_expr(expr, fnc):
         elif expr.id == 'False':
             return 0
 
-        #print ""
-        #print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-        #print ""
-        #print "Checking states"
-        #print "returning " + str(expr.id) + " with value " + str(fnc.state[expr.id])
+        ##print ""
+        ##print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        ##print ""
+        ##print "Checking states"
+        ##print "returning " + str(expr.id) + " with value " + str(fnc.state[expr.id])
 
         return fnc.state[expr.id]
     
@@ -391,67 +393,67 @@ def eval_stmt(stmt, fnc):
         #should actually be eval_expr
         #TODO:Here is a problem
         fnc.return_val = eval_expr(stmt.value, fnc, False)
-        print ""
-        print ""
-        print 'Return value1:', fnc.return_val #Debug
+        #print ""
+        #print ""
+        #print 'Return value1:', fnc.return_val #Debug
 
         #if it is a sub-function, just save the pct and return value accordingly, else call sat solver etc
         if(fnc.is_sub_fun):
             fnc.ret_pct_list.append((fnc.return_val, fnc.pct.assertions()))
         else:
         #add the symbolic values in symbolic_dict to the pct
-            print 'Symbolic Dict:', fnc.symbolic_dict
-            for key in fnc.symbolic_dict:
-                if str(key) != str(fnc.symbolic_dict[key]):
-                    print "Its not trivial" #debug
-                    print "Type", type(key)
-                    print "Type", type(fnc.symbolic_dict[key])
+            #print 'Symbolic Dict:', fnc.symbolic_dict
+            #for key in fnc.symbolic_dict:
+                #if str(key) != str(fnc.symbolic_dict[key]):
+                    #print "Its not trivial" #debug
+                    #print "Type", type(key)
+                    #print "Type", type(fnc.symbolic_dict[key])
                     #TODO:
                     #this may result in an error
                     #fnc.pct.add(Int(key) == check_return(fnc.symbolic_dict[key]))
-                    print 'pct:', fnc.pct  
+                    #print 'pct:', fnc.pct  
                  
             if (fnc.pct.check() == sat):
-                print ("Found a satisfiable stmt") #debug
+                #print ("Found a satisfiable stmt") #debug
                 sat_model = fnc.pct.model()
-                print "Satisfying model:", sat_model #debug
+                #print "Satisfying model:", sat_model #debug
                 sat_dict = {}
                 if sat_model: #see if it is not empty
                     sat_dict = model_to_dictionary(sat_model)
 
                 sat_dict = cleanup_dictionary_to_only_inputs(sat_dict, fnc)
 
-                print 'Return value2:', fnc.return_val
+                #print 'Return value2:', fnc.return_val
 
                 #if not isinstance(fnc.return_val, int):
-                print str(fnc.return_val) + " must be evaluated with", sat_dict
+                #print str(fnc.return_val) + " must be evaluated with", sat_dict
                 #still not sure if this works properly..
                 real_eval = FunctionEvaluator(fnc.f, fnc.ast_root, sat_dict)
 
                 ret = real_eval.eval()
-                print "Ret: " + str(ret)
+                #print "Ret: " + str(ret)
                 fnc.return_val = ret
                 assert(isinstance(fnc.return_val, int))
 
-                print "Appending " , str(fnc.return_val)
-                for s in fnc.stmts_to_eval:
-                    print "!!To evaluate!! ", s
-                print ""
-                print ""
+                #print "Appending " , str(fnc.return_val)
+                #for s in fnc.stmts_to_eval:
+                    #print "!!To evaluate!! ", s
+                #print ""
+                #print ""
 
                 fnc.values_to_ret.append((sat_dict, fnc.return_val))
 
-            else:
-                print "This is not satisfiable"
+            #else:
+                #print "This is not satisfiable"
             #return ends the evaluation
         #not really needed, just to be sure, because fnc.returned aboards anyways
         fnc.stmts_to_eval = [] 
         return
     
     if type(stmt) == ast.If:
-        print "Evaluating :", stmt.test
+        #print "Evaluating :", stmt.test
         eval_expr_result = eval_expr(stmt.test, fnc, False)
-        print 'Condition:', eval_expr_result
+        #print 'Condition:', eval_expr_result
 
         #save the pct
         save_pct = Solver()
@@ -465,11 +467,11 @@ def eval_stmt(stmt, fnc):
                 eval_expr_result = True
         fnc.pct.add(eval_expr_result)
 
-        print 'pct:', fnc.pct
+        #print 'pct:', fnc.pct
 
         #<DEBUG>:
-        if (fnc.pct.check() == sat):
-            print "Model of the if clause: ", fnc.pct.model()
+        #if (fnc.pct.check() == sat):
+            #print "Model of the if clause: ", fnc.pct.model()
         #</DEBUG>
 
         #make a new evaluator that goes along the if stmt and further
@@ -479,12 +481,12 @@ def eval_stmt(stmt, fnc):
         new_f.is_sub_fun = fnc.is_sub_fun
         #stmts to eval changes to the if-path
         new_f.stmts_to_eval = stmt.body + stmts_copy
-        print "real next stmt is: ", new_f.stmts_to_eval[0]
+        #print "real next stmt is: ", new_f.stmts_to_eval[0]
         #eval_body(new_f.stmts_to_eval, new_f)
         eval_stmts_to_eval(new_f) 
        
         if new_f.values_to_ret:
-            print "<<<< If statement returned with: ", new_f.values_to_ret, ">>>>>>>"
+            #print "<<<< If statement returned with: ", new_f.values_to_ret, ">>>>>>>"
             fnc.values_to_ret = fnc.values_to_ret + new_f.values_to_ret
 
         #add the new_f dictionary of assertions to fnc
@@ -510,7 +512,7 @@ def eval_stmt(stmt, fnc):
             else:
                 eval_expr_result = True
 
-        print "Else condition: ", eval_expr_result
+        #print "Else condition: ", eval_expr_result
 
 
         #restore the pct
@@ -520,11 +522,11 @@ def eval_stmt(stmt, fnc):
         #add the negation of the if stmt to the pct
         fnc.pct.add(eval_expr_result)
 
-        print "Else pct", fnc.pct
+        #print "Else pct", fnc.pct
         
         #<DEBUG>:
-        if (fnc.pct.check() == sat):
-            print "Model of the else clause: ", fnc.pct.model()
+        #if (fnc.pct.check() == sat):
+            #print "Model of the else clause: ", fnc.pct.model()
         #</DEBUG>
 
         #go on as if nothing happenend in the if block (hopefully, haha)
@@ -540,7 +542,7 @@ def eval_stmt(stmt, fnc):
         assert (len(stmt.targets) == 1)  # Disallow a=b=c syntax
         lhs = stmt.targets[0]
         rhs = eval_expr(stmt.value, fnc, False)
-        print 'lhs, rhs',lhs, rhs #Debug
+        #print 'lhs, rhs',lhs, rhs #Debug
 
 
         if type(lhs) == ast.Tuple:
@@ -553,7 +555,7 @@ def eval_stmt(stmt, fnc):
             return
         if type(lhs) == ast.Name:
             fnc.symbolic_dict[lhs.id] = rhs
-            print 'Symbolic Dict:',fnc.symbolic_dict
+            #print 'Symbolic Dict:',fnc.symbolic_dict
             return
 
     if type(stmt) == ast.Assert:
@@ -567,25 +569,25 @@ def eval_stmt(stmt, fnc):
         current_pct = Solver()
         current_pct.assert_exprs(fnc.pct.assertions())
 
-        print ""
-        print "////// Assertion ////////"
-        print "pct before assertion", fnc.pct
-        print "dict before assertion", fnc.symbolic_dict
+        #print ""
+        #print "////// Assertion ////////"
+        #print "pct before assertion", fnc.pct
+        #print "dict before assertion", fnc.symbolic_dict
 
         #evaluate this with eval_expr flag set to TRUE -> negate assertion
         # if its satisfiable, we have a model that violates the original assertion
         assertion_evaluation = eval_expr(stmt.test, fnc, True)
-        print "Assertion evaluation: " , assertion_evaluation
+        #print "Assertion evaluation: " , assertion_evaluation
         fnc.pct.add(assertion_evaluation)
 
         #check the new pct if the assertion does not hold
         if (fnc.pct.check() == sat):
-            print ("We found a violating assertion")
+            #print ("We found a violating assertion")
 
             
             assertion_model = fnc.pct.model()
 
-            print "Model: ", assertion_model
+            #print "Model: ", assertion_model
 
             if assertion_model:
                 assertion_dict = model_to_dictionary(assertion_model)
@@ -598,16 +600,16 @@ def eval_stmt(stmt, fnc):
             #adding the assertion dictionary pair to the assertion_violation_dict
             fnc.assertion_violation_dict[stmt] = assertion_dict
 
-            print "Assertion dict of violations so far:", fnc.assertion_violation_dict
+            #print "Assertion dict of violations so far:", fnc.assertion_violation_dict
 
             #send the model to the parent if this is not the parent
             #assertion_violations_to_input needs to have the correct variables
 
-        else:
-            print "----------- True Assertion ---------------"
+        #else:
+            #print "----------- True Assertion ---------------"
 
-        print "/////// end assertion /////////"
-        print ""
+        #print "/////// end assertion /////////"
+        #print ""
         #set the pct back to before the assertion, because the assertion should not influence our pct
         fnc.pct = Solver()
         fnc.pct.assert_exprs(current_pct.assertions())
@@ -691,13 +693,13 @@ class FunctionEvaluator:
         for i in range(0, len(f.args.args)):
             self.symbolic_dict[f.args.args[i].id] = f.args.args[i].id
 
-        print ""
-        print "--- New Evaluator ----"
-        print "Symbolic dictionary:", self.symbolic_dict #debug
-        print "States: ", self.state
-        print "Next stmt to evaluate: ", self.stmts_to_eval[0]
-        print "-----------------------"
-        print ""
+        #print ""
+        #print "--- New Evaluator ----"
+        #print "Symbolic dictionary:", self.symbolic_dict #debug
+        #print "States: ", self.state
+        #print "Next stmt to evaluate: ", self.stmts_to_eval[0]
+        #print "-----------------------"
+        #print ""
     
     #do not change
     def eval(self):
@@ -753,15 +755,15 @@ def new_body_evaluator(f, ast, symbolic_dict, pct, values_to_ret):
 
 def check_return(arg):
     if isinstance (arg, str):
-       # print "transfroming a string", arg
+       # #print "transfroming a string", arg
         return Int(arg)
     else:
-       # print "Type: ", type(arg)
+       # #print "Type: ", type(arg)
         return arg
 
 #new
 def cleanup_dictionary_to_only_inputs(in_dict, fnc):
-    #print "Cleaning up", in_dict #debug
+    ##print "Cleaning up", in_dict #debug
     input_keys = []
     for arg in fnc.f.args.args:
         assert (type(arg) == ast.Name)
