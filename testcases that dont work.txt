@@ -3,8 +3,9 @@ testcases that dont work:
 abs.py (endless because function call in assertion)
 boolean_function (too few arguments)
 hard_function_chain (endless)
-functions (z3 error)
 ififif.py (too less return values, we need ‚2‘)
 local_boolean.py (z3 error)
+gxgx (endless)
+
 
 
