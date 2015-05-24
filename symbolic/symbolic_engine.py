@@ -398,7 +398,7 @@ def eval_stmt(stmt, fnc):
                     print "Type", type(fnc.symbolic_dict[key])
                     #TODO:
                     #this may result in an error
-                    fnc.pct.add(Int(key) == check_return(fnc.symbolic_dict[key]))
+                    #fnc.pct.add(Int(key) == check_return(fnc.symbolic_dict[key]))
                     print 'pct:', fnc.pct  
                  
             if (fnc.pct.check() == sat):
