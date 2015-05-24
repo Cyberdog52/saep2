@@ -61,14 +61,14 @@ def eval_expr(expr, fnc, negate):
     if type(expr) == ast.Name:
         if expr.id == 'True':
             if negate:
-                return 0
+                return False
             else: 
-                return 1
+                return True
         elif expr.id == 'False':
             if negate:
-                return 1
+                return True
             else: 
-                return 0
+                return False
         return check_return(fnc.symbolic_dict[expr.id])
 
     
@@ -251,7 +251,7 @@ def run_expr(expr, fnc):
             return 1
         elif expr.id == 'False':
             return 0
-
+            
         #print ""
         #print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
         #print ""
@@ -510,7 +510,7 @@ def eval_stmt(stmt, fnc):
 
         #go on as if nothing happenend in the if block (hopefully, haha)
         #in order to have a consistency with the form of a body: a body now always consists of a "whole function"
-        fnc.stmts_to_eval = stmt.orelse[:] + fnc.stmts_to_eval
+        fnc.stmts_to_eval = stmt.orelse[:] + fnc.stmts_to_eval        
         #eval_body(fnc.stmts_to_eval, fnc)
         eval_stmts_to_eval(fnc)
         fnc.stmts_to_eval = []
