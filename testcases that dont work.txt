@@ -6,5 +6,6 @@ hard_function_chain (endless)
 local_boolean.py (too few return values)
 gxgx (endless)
 
-
+assert_cf.py
+bool_cast.py
 
