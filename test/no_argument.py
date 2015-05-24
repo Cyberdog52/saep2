@@ -3,3 +3,6 @@ def noargument():
 
 def main (x):
 	return noargument()
+
+def expected_result():
+    return [1]

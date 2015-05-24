@@ -1,10 +1,18 @@
 testcases that dont work:
 
-abs.py (endless because function call in assertion)
-boolean_function (too few arguments)
+boolean_function (too few return values)
 hard_function_chain (endless)
-local_boolean.py (z3 error)
+local_boolean.py (too few return values)
 gxgx (endless)
+bool_cast.py
 
+from hallo-group
 
+bool_cast4.py
+bool_function1.py (endless)
+test2.py (endless)
+test3.py 
+test5.py
+todo_bool_cast2.py
+todo_bool_function2.py 
 
