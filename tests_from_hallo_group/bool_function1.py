@@ -10,3 +10,8 @@ def f(x):
 		return True
 	else:
 		return False
+
+
+
+def expected_result():
+  return [1,5]
