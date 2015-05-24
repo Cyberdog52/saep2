@@ -5,8 +5,6 @@ hard_function_chain (endless)
 local_boolean.py (too few return values)
 gxgx (endless)
 bool_cast.py
-arith_compare.py
-
 
 from hallo-group
 
