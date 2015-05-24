@@ -1,10 +1,10 @@
 testcases that dont work:
 
 abs.py (endless because function call in assertion)
-boolean_function (z3 error)
+boolean_function (too few arguments)
 hard_function_chain (endless)
+functions (z3 error)
 ififif.py (too less return values, we need ‚2‘)
 local_boolean.py (z3 error)
-tuple_of_tuple_simple (dont care, we dont have to implement tuples)
-tuple_of_tuple_hard (dont care, we dont have to implement tuples)
+
 
