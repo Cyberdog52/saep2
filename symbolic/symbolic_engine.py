@@ -78,23 +78,24 @@ def eval_expr(expr, fnc, negate):
 
     if type(expr) == ast.BinOp:
         if type(expr.op) == ast.Add:
-            return Sum( eval_expr(expr.left, fnc, negate), eval_expr(expr.right, fnc, negate) )
+            return eval_expr(expr.left, fnc, negate) + eval_expr(expr.right, fnc, negate )
         if type(expr.op) == ast.Sub:
             return  eval_expr(expr.left, fnc, negate) - eval_expr(expr.right, fnc, negate)
         if type(expr.op) == ast.Mult:
-            return Product( eval_expr(expr.left, fnc, negate), eval_expr(expr.right, fnc, negate) )
+            return eval_expr(expr.left, fnc, negate) * eval_expr(expr.right, fnc, negate)
         if type(expr.op) == ast.Div:
             return eval_expr(expr.left, fnc, negate) / eval_expr(expr.right, fnc, negate)
         if type(expr.op) == ast.Mod:
             return eval_expr(expr.left, fnc, negate) % eval_expr(expr.right, fnc, negate)
         if type(expr.op) == ast.Pow:
+            #z3 cant handle power operator
             return eval_expr(expr.left, fnc, negate) ** eval_expr(expr.right, fnc, negate)
         
         # Evaluate only with constants
         if type(expr.op) == ast.LShift and type(expr.left) == ast.Num and type(expr.right) == ast.Num:
             return eval_expr(expr.left, fnc, negate) <<  eval_expr(expr.right, fnc, negate)
         if type(expr.op) == ast.RShift and type(expr.left) == ast.Num and type(expr.right) == ast.Num:
-            return LShR(eval_expr(expr.left, fnc, negate),  eval_expr(expr.right, fnc, negate))
+            return eval_expr(expr.left, fnc, negate) >> eval_expr(expr.right, fnc, negate)
 
 
     if type(expr) == ast.UnaryOp:
@@ -102,7 +103,7 @@ def eval_expr(expr, fnc, negate):
             if negate:
                 return eval_expr(expr.operand, fnc, False)
             else:
-                return Not( eval_expr(expr.operand, fnc, False))
+                return not eval_expr(expr.operand, fnc, False)
         if type(expr.op) == ast.USub:
             return - eval_expr(expr.operand, fnc, negate) 
 
@@ -153,7 +154,7 @@ def eval_expr(expr, fnc, negate):
             else:
                 r = True
             for v in expr.values:
-                r = And(r, eval_expr(v, fnc, False) )
+                r = r and eval_expr(v, fnc, False)
             return r
         if type(expr.op) == ast.Or:
             if negate:
@@ -161,7 +162,7 @@ def eval_expr(expr, fnc, negate):
             else: 
                 r = False
             for v in expr.values:
-                r = Or (r ,eval_expr(v, fnc, False))
+                r = r or eval_expr(v, fnc, False)
             return r
 
     if type(expr) == ast.Call:
@@ -393,7 +394,11 @@ def eval_stmt(stmt, fnc):
             for key in fnc.symbolic_dict:
                 if str(key) != str(fnc.symbolic_dict[key]):
                     print "Its not trivial" #debug
-                    fnc.pct.add(Int(key) == fnc.symbolic_dict[key])
+                    print "Type", type(key)
+                    print "Type", type(fnc.symbolic_dict[key])
+                    #TODO:
+                    #this may result in an error
+                    #fnc.pct.add(Int(key) == check_return(fnc.symbolic_dict[key]))
                     print 'pct:', fnc.pct  
                  
             if (fnc.pct.check() == sat):
