@@ -78,8 +78,8 @@ def eval_expr(expr, fnc, negate):
 
     if type(expr) == ast.BinOp:
         if type(expr.op) == ast.Add:
-            print "+ Left: ", type(eval_expr(expr.left, fnc, negate))
-            print "+ Right: ", type(eval_expr(expr.right, fnc, negate))
+            #print "+ Left: ", type(eval_expr(expr.left, fnc, negate))
+            #print "+ Right: ", type(eval_expr(expr.right, fnc, negate))
             return eval_expr(expr.left, fnc, negate) + eval_expr(expr.right, fnc, negate )
         if type(expr.op) == ast.Sub:
             return  eval_expr(expr.left, fnc, negate) - eval_expr(expr.right, fnc, negate)
