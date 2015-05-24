@@ -1,17 +1,22 @@
 testcases that dont work:
 
-boolean_function (too few return values)
-hard_function_chain (endless)
-local_boolean.py (too few return values)
-gxgx (endless)
-bool_cast.py
+-bool_cast
+-boolean_function
+-hard_function (endless)
+-local_boolean
 
-from hallo-group
 
-bool_cast4.py (instance * instance)
-bool_function1.py (endless)
-test2.py (endless)
-test3.py (endless)
-test5.py (endless)	
-todo_bool_cast2.py (int + instance)
+from hello-group
+-arith_compare1
+-bool_cast4.py (instance * instance)
+-bool_function1.py 
+-test2.py (endless)
+-test3.py (endless)
+-test5.py (endless)
+-todo_args_bool	
+-todo_bool_cast2.py (int + instance)
+
+
+
+
 
