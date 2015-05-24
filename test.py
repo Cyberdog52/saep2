@@ -1,3 +1,14 @@
+def main():
+	return 1 + 1
+
+'''
+def g(x):
+	return 1
+	return 2
+def main(x):
+	return g(x)
+'''
+'''
 def abs(v):
     if v >= 0:
         return v
@@ -9,7 +20,7 @@ def main(x):
     	return True
     else:
     	return False
-
+'''
 '''
 def g(x):
 	if (x < 0):

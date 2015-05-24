@@ -250,13 +250,13 @@ def run_expr(expr, fnc):
             return 1
         elif expr.id == 'False':
             return 0
-            """
-        print ""
-        print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-        print ""
-        print "Checking states"
-        print "returning " + str(expr.id) + " with value " + str(fnc.state[expr.id])
-"""
+
+        #print ""
+        #print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        #print ""
+        #print "Checking states"
+        #print "returning " + str(expr.id) + " with value " + str(fnc.state[expr.id])
+
         return fnc.state[expr.id]
     
     if type(expr) == ast.Num:
@@ -429,7 +429,8 @@ def eval_stmt(stmt, fnc):
             else:
                 print "This is not satisfiable"
             #return ends the evaluation
-            fnc.stmts_to_eval = [] 
+        #not really needed, just to be sure, because fnc.returned aboards anyways
+        fnc.stmts_to_eval = [] 
         return
     
     if type(stmt) == ast.If:
